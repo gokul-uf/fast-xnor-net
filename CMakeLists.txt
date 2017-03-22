@@ -7,7 +7,7 @@
 
 cmake_minimum_required (VERSION 3.0.2)
 set(CMAKE_VERBOSE_MAKEFILE ON)
-project (FNC)
+project (FNC_XNORNET)
 
 # ================================================================================
 # Reset the C flags
@@ -42,6 +42,8 @@ endif()
 set(SOURCE_FILES
     src/main.c
     src/main.h
+    src/xnornet.c
+    src/xnornet.h
 )
 
-add_executable(FNC ${SOURCE_FILES})
+add_executable(FNC_XNORNET ${SOURCE_FILES})
