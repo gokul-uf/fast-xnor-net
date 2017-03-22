@@ -44,6 +44,16 @@ set(SOURCE_FILES
     src/main.h
     src/xnornet.c
     src/xnornet.h
+    src/conv_layer.c
+    src/conv_layer.h
+    src/fully_con_layer.c
+    src/fully_con_layer.h
+    src/mnist_wrapper.c
+    src/mnist_wrapper.h
+    src/pool_layer.c
+    src/pool_layer.h
+    src/tensor.c
+    src/tensor.h
 )
 
 add_executable(FNC_XNORNET ${SOURCE_FILES})
