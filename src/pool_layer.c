@@ -3,5 +3,6 @@
  include tensor
  operation
  gradient
+ different types of pooling functions
 
 */
