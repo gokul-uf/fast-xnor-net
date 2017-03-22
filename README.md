@@ -4,6 +4,20 @@ Hopefully fast implementation of XNOR-Net in C, because, why not?
 ## Dataset
 http://yann.lecun.com/exdb/mnist/
 
+## How to compile
+```
+mkdir build
+cd build
+cmake ..
+cd ..
+cmake --build build --config Release
+```
+
+## How to run
+```
+./bin/FNC_XNORNET
+```
+
 ## Project Structure
 ├── CMakeLists.txt
 
