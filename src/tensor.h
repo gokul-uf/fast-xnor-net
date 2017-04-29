@@ -22,5 +22,6 @@ void build_batch(tensor * t, int batch_size);
 void build(tensor * t);
 void destroy(tensor * t);
 int offset( tensor * t, int b, int w, int h, int d );
+void test_tensor();
 
 #endif
