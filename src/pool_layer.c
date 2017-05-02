@@ -1,19 +1,59 @@
 #include "pool_layer.h"
 
-void max_pooling(tensor* conv_t, tensor* pool_t, tensor* pool_index_t, int n_rows_conv, 
-	int n_cols_conv, int batch_size, int base){
-	for (int b = 0; b < batch_size; ++b)
+int N_ROWS_POOL;
+int N_COLS_POOL;
+
+void max_pooling(tensor* conv_t, tensor* pool_t, int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], 
+	int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL]){
+
+	int pool_i, pool_j;
+	for (int b = 0; b < BATCH_SIZE; ++b)
 	{
 		for (int f = 0; f < NUM_FILS; ++f)
 		{
-			for (int i = 0; i < n_rows_conv; i=i+2)
+			for (int i = 0, pool_i = 0; i < N_ROWS_CONV; i=i+2, ++pool_i)
 			{
-				for (int j = 0; j < n_cols_conv; j=j+2)
+				double max = 0.0;
+				int max_i = 0, max_j = 0;
+
+				for (int j = 0, pool_j = 0; j < N_COLS_CONV; j=j+2, ++pool_j)
 				{
-					//(conv_t->data)[offset(conv_t,b,j,i,f)] = convolve(input_t, i, j, b+base, fil_w, fil_b, f);
+					double max = 0.0;
+					int max_i = i, max_j = j;
+
+					if ((conv_t->data)[offset(conv_t,b,j,i,f)] > max)
+					{
+						max = (conv_t->data)[offset(conv_t,b,j,i,f)];
+						max_i = i;
+						max_j = j;
+					}
+
+					if ((conv_t->data)[offset(conv_t,b,j+1,i,f)] > max)
+					{
+						max = (conv_t->data)[offset(conv_t,b,j+1,i,f)];
+						max_i = i;
+						max_j = j+1;
+					}
+
+					if ((conv_t->data)[offset(conv_t,b,j,i+1,f)] > max)
+					{
+						max = (conv_t->data)[offset(conv_t,b,j,i+1,f)];
+						max_i = i+1;
+						max_j = j;
+					}
+
+					if ((conv_t->data)[offset(conv_t,b,j+1,i+1,f)] > max)
+					{
+						max = (conv_t->data)[offset(conv_t,b,j+1,i+1,f)];
+						max_i = i+1;
+						max_j = j+1;
+					}
+
+					(pool_t->data)[offset(pool_t,b,pool_j,pool_i,f)] = max;
+					pool_index_i[b][f][pool_i][pool_j] = max_i;
+					pool_index_j[b][f][pool_i][pool_j] = max_j;
 				}
 			}
-			
 		}
 	}
 }

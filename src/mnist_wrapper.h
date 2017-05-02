@@ -21,11 +21,7 @@
 #include <unistd.h>
 #include "tensor.h"
 #include "stddef.h"
-
-extern char* TRAIN_IMAGES;
-extern char* TRAIN_LABELS;
-extern char* TEST_IMAGES;
-extern char* TEST_LABELS;
+#include "common.h"
 
 int ReverseInt (int i);
 void read_mnist_images_labels(char* images_path, char* labels_path , int* number_of_images, int* number_of_labels, 

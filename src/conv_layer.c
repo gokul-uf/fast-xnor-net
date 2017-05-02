@@ -1,15 +1,18 @@
 #include "conv_layer.h"
 
-void convolution(tensor* input_t, tensor* conv_t, int n_rows, int n_cols,
-	double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_FILS], int batch_size, int base){
+int N_ROWS_CONV;
+int N_COLS_CONV;
 
-	for (int b = 0; b < batch_size; ++b)
+void convolution(tensor* input_t, tensor* conv_t, int n_rows, int n_cols,
+	double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_FILS], int base){
+
+	for (int b = 0; b < BATCH_SIZE; ++b)
 	{
 		for (int f = 0; f < NUM_FILS; ++f)
 		{
-			for (int i = 0; i <= (n_rows - FIL_ROWS); ++i)
+			for (int i = 0; i < N_ROWS_CONV; ++i)
 			{
-				for (int j = 0; j <= (n_cols - FIL_COLS); ++j)
+				for (int j = 0; j < N_ROWS_CONV; ++j)
 				{
 					(conv_t->data)[offset(conv_t,b,j,i,f)] = convolve(input_t, i, j, b+base, fil_w, fil_b, f);
 				}
@@ -22,13 +25,13 @@ void convolution(tensor* input_t, tensor* conv_t, int n_rows, int n_cols,
 void initialize_filters(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_FILS]){
 	for (int k = 0; k < NUM_FILS; ++k)
 	{
-		fil_b[k] = 1.0;
+		fil_b[k] = 0.0;
 
 		for (int i = 0; i < FIL_ROWS; ++i)
 		{
 			for (int j = 0; j < FIL_COLS; ++j)
 			{
-				fil_w[k][i][j] = 2;				
+				fil_w[k][i][j] = 1.0;				
 			}
 		}
 	}
