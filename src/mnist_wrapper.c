@@ -1,7 +1,4 @@
 #include "mnist_wrapper.h"
-#include "stddef.h"
-#include "tensor.h"
-#include <unistd.h>
 
 char* TRAIN_IMAGES = "";
 char* TRAIN_LABELS = "";
@@ -77,7 +74,7 @@ void read_mnist_images_labels(char* images_path, char* labels_path , int* number
         		for (int h = 0; h < *n_rows; ++h)
         		{
         			fread(&temp_char, sizeof(unsigned char), 1 , fp_images);
-        			(input_tensor->data)[offset(input_tensor,b,w,h,0)] = (int)temp_char;
+        			(input_tensor->data)[offset(input_tensor,b,w,h,0)] = (double)temp_char;
         		}
         	}
         }
@@ -104,7 +101,7 @@ void test_mnist_load(tensor t, int* labels, int number)
     for (int i = (number-1)*28*28; i < (number-1)*28*28 + 28*7; ++i)
     {
     	if(t.data[i] != 0)
-    	printf("t.data[%d]=%d\n", i, t.data[i]);
+    	printf("t.data[%d]=%f\n", i, t.data[i]);
     }
 
     printf("\nBY OFFSET\n");
@@ -113,7 +110,7 @@ void test_mnist_load(tensor t, int* labels, int number)
     	for (int h = 0; h < 28; ++h)
     	{
     		if(t.data[offset(&t,number-1,w,h,0)] != 0)
-    		printf("t.data[%d]=%d\n",offset(&t,number-1,w,h,0), t.data[offset(&t,number-1,w,h,0)]);
+    		printf("t.data[%d]=%f\n",offset(&t,number-1,w,h,0), t.data[offset(&t,number-1,w,h,0)]);
     	}
     }
 
@@ -228,5 +225,4 @@ void set_paths()
    printf("Train label file: %s\n", TRAIN_LABELS);
    printf("Test image file: %s\n", TEST_IMAGES);
    printf("Test label file: %s\n\n", TEST_LABELS);
-
 }

@@ -5,7 +5,7 @@ void build_args(tensor * t, int width, int height, int depth, int batch_size){
     t->height       = height;
     t->depth        = depth;
     t->batch_size   = batch_size;
-    t->data         = malloc(width * height * depth * batch_size * sizeof(int));
+    t->data         = malloc(width * height * depth * batch_size * sizeof(double));
 }
 
 void build_batch(tensor * t, int batch_size){
@@ -38,9 +38,22 @@ void test_tensor()
     t.data[offset(&t,0,1,0,0)] = 3;
     t.data[offset(&t,0,1,1,0)] = 4;
     
-    printf("%d %d %d %d ---> %d x %d x %d x %d \n", t.data[0], t.data[1], t.data[2], t.data[3],
+    printf("%f %f %f %f ---> %d x %d x %d x %d \n", t.data[0], t.data[1], t.data[2], t.data[3],
            t.width, t.height, t.depth, t.batch_size);
     destroy(&t);
 
     printf("\ntest_tensor done!\n\n");
+}
+
+void print_tensor(tensor* t, int image_num, int len){
+    printf("Tensor: %d\n", image_num);
+    for (int i = 0; i < len; ++i)
+    {
+        for (int j = 0; j < len; ++j)
+        {
+            printf("%4.0f,", (t->data)[offset(t,image_num,j,i,0)]);
+        }
+
+        printf("\n\n");
+    }
 }

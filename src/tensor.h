@@ -14,7 +14,7 @@ typedef struct {
     int height;
     int depth;
     int batch_size;
-    int * data;
+    double * data;
 } tensor;
 
 void build_args(tensor * t, int width, int height, int depth, int batch_size);

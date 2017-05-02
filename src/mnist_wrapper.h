@@ -18,7 +18,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "tensor.h"
+#include "stddef.h"
 
 extern char* TRAIN_IMAGES;
 extern char* TRAIN_LABELS;
