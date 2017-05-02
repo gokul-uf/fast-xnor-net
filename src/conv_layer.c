@@ -67,5 +67,12 @@ double convolve(tensor* t, int r, int c, int image_num, double fil_w[NUM_FILS][F
 
 	conv_val += fil_b[f];
 
+	// applying ReLU
+
+	if (conv_val < 0.0)
+	{
+		conv_val = 0.0;
+	}
+
 	return conv_val;
 }

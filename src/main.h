@@ -8,6 +8,7 @@
 #include "tensor.h"
 #include "mnist_wrapper.h"
 #include "conv_layer.h"
+#include "pool_layer.h"
 
 char* TEST_IMAGES;
 char* TEST_LABELS;
