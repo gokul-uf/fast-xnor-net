@@ -54,6 +54,7 @@ int main(){
     // dimension: BATCH_SIZE*24*24
     build_args(&conv_t, N_COLS_CONV, N_ROWS_CONV, NUM_FILS, BATCH_SIZE);
 
+
     N_ROWS_POOL = N_ROWS_CONV/POOL_DIM;
     N_COLS_POOL = N_COLS_CONV/POOL_DIM;
 
@@ -63,11 +64,21 @@ int main(){
     int pool_index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL];
 
 
+    // fully connected layer
+    tensor fully_con_w, fully_con_b, fully_con_out;
+
+    build_args(&fully_con_w, N_COLS_POOL, N_ROWS_POOL, NUM_FILS, N_DIGS);
+    build_args(&fully_con_b, 1, 1, N_DIGS, 1);
+    build_args(&fully_con_out, 1, 1, N_DIGS, BATCH_SIZE);
+
+    initialize_weights_biases(&fully_con_w, &fully_con_b);
+
     n_batches = number_of_images/BATCH_SIZE;
     for (int i = 0; i < n_batches; ++i)
     {
 	    convolution(&input_images, &conv_t, n_rows, n_cols, fil_w, fil_b, i*BATCH_SIZE);
 	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j);
+	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b);
     }
 
 
@@ -76,7 +87,9 @@ int main(){
     print_tensor(&conv_t, 99, 24);
     print_tensor(&pool_t, 99, 12);
 
-    print_pool_mat(pool_index_i, pool_index_j, 99);
+    //print_pool_mat(pool_index_i, pool_index_j, 99);
+
+    print_tensor_1d(&fully_con_out, 10, 99);
 
     return 0;
 }

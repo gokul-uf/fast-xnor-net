@@ -6,6 +6,7 @@
 #define FIL_ROWS 5
 #define FIL_COLS 5
 #define POOL_DIM 2
+#define N_DIGS 10
 
 #include <stdio.h>
 
