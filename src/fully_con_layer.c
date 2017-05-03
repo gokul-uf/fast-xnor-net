@@ -9,7 +9,7 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 	{
 		for (int d = 0; d < N_DIGS; ++d)
 		{
-			double sum = (fully_con_b->data)[offset(fully_con_b, 0,0,0,d)];
+			double sum = (fully_con_b->data)[offset(fully_con_b, 0,0,0,d)];//Initialize with bias
 
 			for (int f = 0; f < NUM_FILS; ++f)
 			{
@@ -67,7 +67,7 @@ void initialize_weights_biases(tensor* fully_con_w, tensor* fully_con_b){
 			{
 				for (int j = 0; j < N_COLS_POOL; ++j)
 				{
-					(fully_con_w->data)[offset(fully_con_w, d, j, i, k)] = 1.0;
+					(fully_con_w->data)[offset(fully_con_w, d, j, i, k)] = 0.001;
 				}			
 			}
 		}

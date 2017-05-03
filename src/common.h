@@ -7,6 +7,7 @@
 #define FIL_COLS 5
 #define POOL_DIM 2
 #define N_DIGS 10
+#define LEARN_RATE 1.0
 
 #include <stdio.h>
 

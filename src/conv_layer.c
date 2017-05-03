@@ -31,7 +31,7 @@ void initialize_filters(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b
 		{
 			for (int j = 0; j < FIL_COLS; ++j)
 			{
-				fil_w[k][i][j] = 1.0;				
+				fil_w[k][i][j] = 0.001;				
 			}
 		}
 	}

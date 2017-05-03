@@ -54,6 +54,8 @@ set(SOURCE_FILES
     src/pool_layer.h
     src/tensor.c
     src/tensor.h
+    src/back_prop.c
+    src/back_prop.h
 )
 
 add_executable(FNC_XNORNET ${SOURCE_FILES})

@@ -84,6 +84,7 @@ int main(){
 	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j);
 	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b);
 	    softmax(&fully_con_out, &softmax_out);
+	    update_sotmax_weights(&fully_con_w, &fully_con_b, softmax_out, pool_t, labels, i*BATCH_SIZE);
     }
 
 
