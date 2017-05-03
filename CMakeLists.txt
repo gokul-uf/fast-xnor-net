@@ -57,3 +57,5 @@ set(SOURCE_FILES
 )
 
 add_executable(FNC_XNORNET ${SOURCE_FILES})
+
+target_link_libraries(FNC_XNORNET m)

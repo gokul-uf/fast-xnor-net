@@ -23,7 +23,35 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 				}
 			}
 	
-			(fully_con_out->data)[offset(fully_con_out, 0, 0, d, b)] = sum;
+			(fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)] = sum;
+		}
+	}
+}
+
+void softmax(tensor* fully_con_out, tensor* softmax_out){
+	for (int b = 0; b < BATCH_SIZE; ++b)
+	{
+		double max = -99999.0;
+		for (int d = 0; d < N_DIGS; ++d)
+		{
+			if ((fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)] > max)
+			{
+				max = (fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)];
+			}
+		}
+
+		double exp_sum = 0.0;
+		for (int d = 0; d < N_DIGS; ++d)
+		{
+			exp_sum += exp( (fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)] - max );
+		}
+
+		for (int d = 0; d < N_DIGS; ++d)
+		{
+			(softmax_out->data)[offset(softmax_out, b, 0, 0, d)] = exp(
+																	(fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)] - max
+																	- log( exp_sum )
+																	);
 		}
 	}
 }
@@ -31,7 +59,7 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 void initialize_weights_biases(tensor* fully_con_w, tensor* fully_con_b){
 	for (int d = 0; d < N_DIGS; ++d)
 	{
-		(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, d)] = 1.0;
+		(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, d)] = 0.0;
 
 		for (int k = 0; k < NUM_FILS; ++k)
 		{

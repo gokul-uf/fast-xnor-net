@@ -71,6 +71,10 @@ int main(){
     build_args(&fully_con_b, 1, 1, N_DIGS, 1);
     build_args(&fully_con_out, 1, 1, N_DIGS, BATCH_SIZE);
 
+    // softmax layer
+    tensor softmax_out;
+    build_args(&softmax_out, 1, 1, N_DIGS, BATCH_SIZE);
+
     initialize_weights_biases(&fully_con_w, &fully_con_b);
 
     n_batches = number_of_images/BATCH_SIZE;
@@ -79,6 +83,7 @@ int main(){
 	    convolution(&input_images, &conv_t, n_rows, n_cols, fil_w, fil_b, i*BATCH_SIZE);
 	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j);
 	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b);
+	    softmax(&fully_con_out, &softmax_out);
     }
 
 
@@ -90,6 +95,7 @@ int main(){
     //print_pool_mat(pool_index_i, pool_index_j, 99);
 
     print_tensor_1d(&fully_con_out, 10, 99);
+    print_tensor_1d(&softmax_out, 10, 99);
 
     return 0;
 }

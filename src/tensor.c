@@ -62,6 +62,8 @@ void print_tensor(tensor* t, int image_num, int len){
 void print_tensor_1d(tensor* t, int lim, int b){
     for (int d = 0; d < lim; ++d)
     {
-        printf("%.2f, ", (t->data)[offset(t, 0, 0, d, b)]);
+        printf("%f, ", (t->data)[offset(t, b, 0, 0, d)]);
     }
+
+    printf("\n");
 }
