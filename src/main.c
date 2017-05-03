@@ -77,6 +77,10 @@ int main(){
 
     initialize_weights_biases(&fully_con_w, &fully_con_b);
 
+    // backprop to max-pool layer
+    tensor del_max_pool;
+    build_args(&del_max_pool, N_COLS_POOL, N_ROWS_POOL, NUM_FILS, BATCH_SIZE);
+
     n_batches = number_of_images/BATCH_SIZE;
     for (int i = 0; i < n_batches; ++i)
     {
@@ -84,6 +88,10 @@ int main(){
 	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j);
 	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b);
 	    softmax(&fully_con_out, &softmax_out);
+
+	    bp_softmax_to_maxpool(&del_max_pool, softmax_out, labels, i*BATCH_SIZE, fully_con_w);
+
+	    // update weights and biases
 	    update_sotmax_weights(&fully_con_w, &fully_con_b, softmax_out, pool_t, labels, i*BATCH_SIZE);
     }
 
