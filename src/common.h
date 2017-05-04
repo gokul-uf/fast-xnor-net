@@ -2,7 +2,8 @@
 #define COMMON_H
 
 #define BATCH_SIZE 10
-#define NUM_EPOCHS 30
+#define NUM_EPOCHS 15
+#define NUM_VAL 10000
 #define NUM_FILS 3
 #define FIL_ROWS 5
 #define FIL_COLS 5

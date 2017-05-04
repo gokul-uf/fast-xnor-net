@@ -3,9 +3,9 @@
 int N_ROWS_POOL;
 int N_COLS_POOL;
 
-void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, tensor* fully_con_b){
+void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, tensor* fully_con_b, int batch_size){
 
-	for (int b = 0; b < BATCH_SIZE; ++b)
+	for (int b = 0; b < batch_size; ++b)
 	{
 		for (int d = 0; d < N_DIGS; ++d)
 		{
@@ -28,8 +28,8 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 	}
 }
 
-void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[BATCH_SIZE]){
-	for (int b = 0; b < BATCH_SIZE; ++b)
+void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[], int batch_size){
+	for (int b = 0; b < batch_size; ++b)
 	{
 		double max = -99999.0, max_index = -1;
 		for (int d = 0; d < N_DIGS; ++d)

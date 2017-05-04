@@ -4,10 +4,10 @@ int N_ROWS_POOL;
 int N_COLS_POOL;
 
 void max_pooling(tensor* conv_t, tensor* pool_t, int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], 
-	int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL]){
+	int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int batch_size, char mode){
 
 	int pool_i, pool_j;
-	for (int b = 0; b < BATCH_SIZE; ++b)
+	for (int b = 0; b < batch_size; ++b)
 	{
 		for (int f = 0; f < NUM_FILS; ++f)
 		{
@@ -50,8 +50,13 @@ void max_pooling(tensor* conv_t, tensor* pool_t, int pool_index_i[][NUM_FILS][N_
 					}
 
 					(pool_t->data)[offset(pool_t,b,pool_j,pool_i,f)] = max;
-					pool_index_i[b][f][pool_i][pool_j] = max_i;
-					pool_index_j[b][f][pool_i][pool_j] = max_j;
+
+					// Only if mode is training
+					if (mode == 'T')
+					{
+						pool_index_i[b][f][pool_i][pool_j] = max_i;
+						pool_index_j[b][f][pool_i][pool_j] = max_j;
+					}
 				}
 			}
 		}

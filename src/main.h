@@ -11,6 +11,7 @@
 #include <time.h>
 
 void print_pool_mat(int mat1[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int mat2[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int num);
+double validate();
 
 #endif //FNC_MAIN_H
 

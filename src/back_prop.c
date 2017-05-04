@@ -20,21 +20,9 @@ void update_sotmax_weights(tensor* fully_con_w, tensor softmax_out, tensor pool_
 					{
 						delta = softmax_out.data[offset(&softmax_out, b, 0, 0, d)] - (labels[shuffle_index[base+b]] == d);
 						delta_w += delta * pool_t.data[offset(&pool_t, b, c, r, f)];
-
-					if (f==0)
-					{
-						//printf("\npool_t.data[offset(&pool_t, b, c, r, f)]=%f\n", pool_t.data[offset(&pool_t, b, c, r, f)]);
-						//printf("\ndelta_w=%f\n", delta_w);
-					}
 					}
 
 					(fully_con_w->data)[offset(fully_con_w, d, c, r, f)] -= (LEARN_RATE/BATCH_SIZE)*delta_w;
-
-					/*if (f==0)
-					{
-						printf("\ndelta=%f\n", delta);
-						printf("\ndelta_w=%f\n", delta_w);
-					}*/
 				}
 			}
 		}
@@ -81,11 +69,6 @@ void bp_softmax_to_maxpool(tensor* del_max_pool, tensor softmax_out, int* labels
 				}
 			}
 		}
-
-		/*if (b==0)
-		{
-			printf("delta=%f, sum=%f\n", delta, sum);
-		}*/
 	}
 }
 
