@@ -74,7 +74,7 @@ void read_mnist_images_labels(char* images_path, char* labels_path , int* number
         		for (int h = 0; h < *n_rows; ++h)
         		{
         			fread(&temp_char, sizeof(unsigned char), 1 , fp_images);
-        			(input_tensor->data)[offset(input_tensor,b,w,h,0)] = (double)temp_char;
+        			(input_tensor->data)[offset(input_tensor,b,w,h,0)] = ((double)temp_char - 127)/127.0;
         		}
         	}
         }

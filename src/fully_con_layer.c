@@ -28,17 +28,20 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 	}
 }
 
-void softmax(tensor* fully_con_out, tensor* softmax_out){
+void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[BATCH_SIZE]){
 	for (int b = 0; b < BATCH_SIZE; ++b)
 	{
-		double max = -99999.0;
+		double max = -99999.0, max_index = -1;
 		for (int d = 0; d < N_DIGS; ++d)
 		{
 			if ((fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)] > max)
 			{
 				max = (fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)];
+				max_index = d;
 			}
 		}
+
+		preds[b] = max_index;
 
 		double exp_sum = 0.0;
 		for (int d = 0; d < N_DIGS; ++d)
@@ -57,6 +60,9 @@ void softmax(tensor* fully_con_out, tensor* softmax_out){
 }
 
 void initialize_weights_biases(tensor* fully_con_w, tensor* fully_con_b){
+
+	srand( time(NULL) );
+
 	for (int d = 0; d < N_DIGS; ++d)
 	{
 		(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, d)] = 0.0;
@@ -67,7 +73,18 @@ void initialize_weights_biases(tensor* fully_con_w, tensor* fully_con_b){
 			{
 				for (int j = 0; j < N_COLS_POOL; ++j)
 				{
-					(fully_con_w->data)[offset(fully_con_w, d, j, i, k)] = 0.001;
+					int r = rand();
+
+					if (r%2 == 0)
+					{
+						double ran = ((double)rand())/RAND_MAX;
+						(fully_con_w->data)[offset(fully_con_w, d, j, i, k)] = -ran;
+					}
+					else
+					{
+						double ran = ((double)rand())/RAND_MAX;
+						(fully_con_w->data)[offset(fully_con_w, d, j, i, k)] = ran;
+					}
 				}			
 			}
 		}

@@ -1,13 +1,14 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#define BATCH_SIZE 100
+#define BATCH_SIZE 10
+#define NUM_EPOCHS 30
 #define NUM_FILS 3
 #define FIL_ROWS 5
 #define FIL_COLS 5
 #define POOL_DIM 2
 #define N_DIGS 10
-#define LEARN_RATE 1.0
+#define LEARN_RATE 0.01
 
 #include <stdio.h>
 
