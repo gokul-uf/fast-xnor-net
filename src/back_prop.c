@@ -41,7 +41,7 @@ void update_sotmax_biases(tensor* fully_con_b, tensor softmax_out, int* labels, 
 		}
 
 		(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, d)] -= (LEARN_RATE/BATCH_SIZE)*delta_b;
-				
+
 	}
 }
 
@@ -88,7 +88,7 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor del_max_pool, tensor conv_t, in
 
 					if (conv_t.data[offset(&conv_t, b, row, col, f)] > 0.0)
 					{
-						(del_conv->data)[offset(del_conv, b, col, row, f)] = (del_max_pool.data)[offset(&del_max_pool, b, c, r, f)];	
+						(del_conv->data)[offset(del_conv, b, col, row, f)] = (del_max_pool.data)[offset(&del_max_pool, b, c, r, f)];
 					}
 				}
 			}
@@ -96,7 +96,7 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor del_max_pool, tensor conv_t, in
 	}
 }
 
-void update_conv_weights(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], tensor del_conv, tensor conv_t, 
+void update_conv_weights(tensor* fil_w, tensor del_conv, tensor conv_t,
 	tensor input_images, int base, int shuffle_index[]){
 
 	for (int f = 0; f < NUM_FILS; ++f)
@@ -105,30 +105,31 @@ void update_conv_weights(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], tensor del_
 		{
 			for (int c = 0; c < FIL_COLS; ++c)
 			{
+                for(int d = 0; d < FIL_DEPTH; ++d){
+				    double delta_w = 0.0;
 
-				double delta_w = 0.0;
+				    for (int b = 0; b < BATCH_SIZE; ++b)
+				    {
+				    	for (int i = 0; i < N_ROWS_CONV; ++i)
+				    	{
+				    		for (int j = 0; j < N_COLS_CONV; ++j)
+				    		{
+				    			if(conv_t.data[offset(&conv_t, b, j, i, f)] > 0.0){
+				    				delta_w += del_conv.data[offset(&del_conv, b, j, i, f)]
+				    						* input_images.data[offset(&input_images, shuffle_index[b+base], j+c, i+r, d)];
+				    			}
+				    		}
+				    	}
+				    }
 
-				for (int b = 0; b < BATCH_SIZE; ++b)
-				{
-					for (int i = 0; i < N_ROWS_CONV; ++i)
-					{
-						for (int j = 0; j < N_COLS_CONV; ++j)
-						{
-							if(conv_t.data[offset(&conv_t, b, j, i, f)] > 0.0){
-								delta_w += del_conv.data[offset(&del_conv, b, j, i, f)] 
-										* input_images.data[offset(&input_images, shuffle_index[b+base], j+c, i+r, 0)];
-							}
-						}
-					}
-				}
-
-				fil_w[f][r][c] -= (LEARN_RATE/BATCH_SIZE)*delta_w;
+				    (fil_w->data)[offset(fil_w, f, r, c, d)] -= (LEARN_RATE/BATCH_SIZE)*delta_w;
+                }
 			}
 		}
 	}
 }
 
-void update_conv_biases(double fil_b[NUM_FILS], tensor del_conv, tensor conv_t){
+void update_conv_biases(tensor* fil_b, tensor del_conv, tensor conv_t){
 
 	for (int f = 0; f < NUM_FILS; ++f)
 	{
@@ -147,6 +148,6 @@ void update_conv_biases(double fil_b[NUM_FILS], tensor del_conv, tensor conv_t){
 			}
 		}
 
-		fil_b[f] -= (LEARN_RATE/BATCH_SIZE)*delta_b;
+		(fil_b->data)[offset(fil_b, f, 0, 0, 0)] -= (LEARN_RATE/BATCH_SIZE)*delta_b;
 	}
 }

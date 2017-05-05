@@ -20,8 +20,11 @@ int num_train;
 tensor input_images;
 int* labels;
 
-double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS];
-double fil_b[NUM_FILS];
+// double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS];
+// double fil_b[NUM_FILS];
+
+tensor fil_w;
+tensor fil_b;
 
 // dimension: BATCH_SIZE*24*24
 tensor conv_t;
@@ -34,6 +37,8 @@ tensor fully_con_w, fully_con_b, fully_con_out;
 
 tensor softmax_out;
 
+void shuffle(int shuffle_index[], int number_of_images);
+
 int main(){
     printf("starting program\n");
 
@@ -42,7 +47,7 @@ int main(){
 
     set_paths();
 
-    read_mnist_images_labels(TRAIN_IMAGES, TRAIN_LABELS, &number_of_images, &number_of_labels, 
+    read_mnist_images_labels(TRAIN_IMAGES, TRAIN_LABELS, &number_of_images, &number_of_labels,
     	&n_rows, &n_cols, &input_images, &labels);
 
     printf("number_of_images=%d\n", number_of_images);
@@ -54,9 +59,10 @@ int main(){
 
     // Now we have input layer as input_images. Next is convolution layer
 
-    initialize_filters(fil_w, fil_b);
-    print_filters(fil_w, fil_b);
-
+    build_args(&fil_w, FIL_COLS, FIL_ROWS, FIL_DEPTH, NUM_FILS);
+    build_args(&fil_b, 1, 1, 1, NUM_FILS);
+    initialize_filters(&fil_w, &fil_b);
+    print_filters(&fil_w, &fil_b);
 
     N_ROWS_CONV = n_rows - FIL_ROWS + 1;
     N_COLS_CONV = n_cols - FIL_COLS + 1;
@@ -123,7 +129,7 @@ int main(){
         correct_preds = 0;
         for (int i = 0; i < n_batches; ++i)
         {
-    	    convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, fil_w, fil_b, i*BATCH_SIZE, shuffle_index);
+    	    convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, &fil_w, &fil_b, i*BATCH_SIZE, shuffle_index);
     	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
     	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
     	    softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
@@ -134,8 +140,8 @@ int main(){
     	    // update weights and biases
     	    update_sotmax_weights(&fully_con_w, softmax_out, pool_t, labels, i*BATCH_SIZE, shuffle_index);
     	    update_sotmax_biases(&fully_con_b, softmax_out, labels, i*BATCH_SIZE, shuffle_index);
-    	    update_conv_weights(fil_w, del_conv, conv_t, input_images, i*BATCH_SIZE, shuffle_index);
-    	    update_conv_biases(fil_b, del_conv, conv_t);
+    	    update_conv_weights(&fil_w, del_conv, conv_t, input_images, i*BATCH_SIZE, shuffle_index);
+    	    update_conv_biases(&fil_b, del_conv, conv_t);
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
@@ -193,7 +199,7 @@ void print_pool_mat(int mat1[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], in
 	{
 		for (int j = 0; j < N_COLS_POOL; ++j)
 		{
-			printf("%2d-%2d, ", mat1[num][0][i][j], mat2[num][0][i][j]);				
+			printf("%2d-%2d, ", mat1[num][0][i][j], mat2[num][0][i][j]);
 		}
 		printf("\n");
 	}
@@ -240,7 +246,7 @@ double validate(){
     int correct_preds = 0;
     for (int i = num_train; i < num_train + num_val; ++i)
         {
-            convolution(&input_images, &conv_t, n_rows, n_cols, 1, fil_w, fil_b, i, shuffle_index);
+            convolution(&input_images, &conv_t, n_rows, n_cols, 1, &fil_w, &fil_b, i, shuffle_index);
             max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
             softmax(&fully_con_out, &softmax_out, pred, 1);

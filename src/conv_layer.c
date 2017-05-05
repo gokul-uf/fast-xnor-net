@@ -4,7 +4,7 @@ int N_ROWS_CONV;
 int N_COLS_CONV;
 
 void convolution(tensor* input_t, tensor* conv_t, int n_rows, int n_cols, int batch_size,
-	double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_FILS], int base, int shuffle_index[]){
+	tensor* fil_w, tensor* fil_b, int base, int shuffle_index[]){
 
 	for (int b = 0; b < batch_size; ++b)
 	{
@@ -17,49 +17,70 @@ void convolution(tensor* input_t, tensor* conv_t, int n_rows, int n_cols, int ba
 					(conv_t->data)[offset(conv_t,b,j,i,f)] = convolve(input_t, i, j, b+base, fil_w, fil_b, f, shuffle_index);
 				}
 			}
-			
+
 		}
 	}
 }
 
-void initialize_filters(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_FILS]){
+// void initialize_filters(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_FILS]){
+//
+// 	srand( time(NULL) );
+//
+// 	for (int k = 0; k < NUM_FILS; ++k)
+// 	{
+// 		fil_b[k] = 0.0;
+//
+// 		for (int i = 0; i < FIL_ROWS; ++i)
+// 		{
+// 			for (int j = 0; j < FIL_COLS; ++j)
+// 			{
+// 				int r = rand();
+//
+// 				if (r%2 == 0)
+// 				{
+// 					double ran = ((double)rand())/RAND_MAX;
+// 					fil_w[k][i][j] = -ran;
+// 				}
+// 				else
+// 				{
+// 					double ran = ((double)rand())/RAND_MAX;
+// 					fil_w[k][i][j] = ran;
+// 				}
+// 			}
+// 		}
+// 	}
+// }
 
-	srand( time(NULL) );
+void initialize_filters(tensor* fil_w, tensor* fil_b) {
+    srand(time(NULL));
 
-	for (int k = 0; k < NUM_FILS; ++k)
-	{
-		fil_b[k] = 0.0;
-
-		for (int i = 0; i < FIL_ROWS; ++i)
-		{
-			for (int j = 0; j < FIL_COLS; ++j)
-			{
-				int r = rand();
-
-				if (r%2 == 0)
-				{
-					double ran = ((double)rand())/RAND_MAX;
-					fil_w[k][i][j] = -ran;					
-				}
-				else
-				{
-					double ran = ((double)rand())/RAND_MAX;
-					fil_w[k][i][j] = ran;
-				}				
-			}
-		}
-	}
+    for(int k = 0; k < NUM_FILS; k++){
+        (fil_b->data)[offset(fil_b, k, 0, 0, 0)] = 0.0;
+        for(int i = 0; i < FIL_ROWS; ++i){
+            for(int j = 0; j < FIL_COLS; ++j){
+                for(int l = 0; l < FIL_DEPTH; ++l){
+                    int r = rand();
+                    double ran = ((double)rand())/RAND_MAX;
+                    if (r%2 == 0){
+                        (fil_w->data)[offset(fil_w, k, j, i, l)] = -ran;
+                    }else{
+                        (fil_w->data)[offset(fil_w, k, j, i, l)] = ran;
+                    }
+                }
+            }
+        }
+    }
 }
 
-void print_filters(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_FILS]){
+void print_filters(tensor* fil_w, tensor* fil_b){
 	for (int k = 0; k < NUM_FILS; ++k)
 	{
-		printf("k=%d, bias=%f\nweights:\n", k, fil_b[k]);
+		printf("k=%d, bias=%f\nweights:\n", k, (fil_b->data)[offset(fil_b, k, 0, 0, 0)]);
 		for (int i = 0; i < FIL_ROWS; ++i)
 		{
 			for (int j = 0; j < FIL_COLS; ++j)
 			{
-				printf("%f, ", fil_w[k][i][j]);				
+				printf("%f, ", (fil_w->data)[offset(fil_w, k, j, i, 0)]);
 			}
 			printf("\n");
 		}
@@ -68,19 +89,20 @@ void print_filters(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_
 }
 
 // Tested!!
-double convolve(tensor* t, int r, int c, int image_num, double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
-	double fil_b[NUM_FILS], int f, int shuffle_index[]){
+double convolve(tensor* t, int r, int c, int image_num, tensor* fil_w, tensor* fil_b, int f, int shuffle_index[]){
 
 	double conv_val = 0.0;
 	for (int i = 0; i < FIL_ROWS; ++i)
 	{
 		for (int j = 0; j < FIL_COLS; ++j)
 		{
-			conv_val += fil_w[f][i][j] * (t->data)[offset(t, shuffle_index[image_num], c+j, r+i, 0)];
+            for (int k = 0; k < FIL_DEPTH; ++k){
+			    conv_val += (fil_w->data)[offset(fil_w, f, j, i, k)] * (t->data)[offset(t, shuffle_index[image_num], c+j, r+i, k)];
+            }
 		}
 	}
 
-	conv_val += fil_b[f];
+	conv_val += (fil_b->data)[offset(fil_b, f, 0, 0, 0)];
 
 	// applying ReLU
 	if (conv_val < 0.0)

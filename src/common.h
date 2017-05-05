@@ -7,6 +7,7 @@
 #define NUM_FILS 3
 #define FIL_ROWS 5
 #define FIL_COLS 5
+#define FIL_DEPTH 1
 #define POOL_DIM 2
 #define N_DIGS 10
 #define LEARN_RATE 0.01
