@@ -1,0 +1,28 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/lostbenjamin/Documents/ETH_Zurich/courses/fast_code/fast-xnor-net/lib/pcm/MacMSRDriver/DriverInterface.c
+DriverInterface.h
+/Users/lostbenjamin/Documents/ETH_Zurich/courses/fast_code/fast-xnor-net/lib/pcm/MacMSRDriver/DriverInterface.h
+
+/Users/lostbenjamin/Documents/ETH_Zurich/courses/fast_code/fast-xnor-net/lib/pcm/MacMSRDriver/DriverInterface.h
+stdint.h
+-
+stdio.h
+-
+stdlib.h
+-
+IOKit/IOKitLib.h
+-
+PcmMsr/UserKernelShared.h
+/Users/lostbenjamin/Documents/ETH_Zurich/courses/fast_code/fast-xnor-net/lib/pcm/MacMSRDriver/PcmMsr/UserKernelShared.h
+
+/Users/lostbenjamin/Documents/ETH_Zurich/courses/fast_code/fast-xnor-net/lib/pcm/MacMSRDriver/PcmMsr/UserKernelShared.h
+stdint.h
+-
+

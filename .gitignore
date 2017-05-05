@@ -1,6 +1,7 @@
 # FNC
 build/
-
+bin/
+.DS_Store
 
 # Object files
 *.o
