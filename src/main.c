@@ -20,8 +20,13 @@ int num_train;
 tensor input_images;
 int* labels;
 
+// filter weights and biases in conv layer
 double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS];
 double fil_b[NUM_FILS];
+
+// binarized weights in conv layer
+int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS];
+double alphas[NUM_FILS];
 
 // dimension: BATCH_SIZE*24*24
 tensor conv_t;
@@ -29,10 +34,22 @@ tensor conv_t;
 // dimension: BATCH_SIZE*12*12
 tensor pool_t;
 
+int**** pool_index_i;
+int**** pool_index_j;
 
 tensor fully_con_w, fully_con_b, fully_con_out;
-
 tensor softmax_out;
+tensor del_max_pool;
+tensor del_conv;
+
+
+// accuracy on taining set
+int preds[BATCH_SIZE];
+double train_acc = 0.0;
+int correct_preds = 0;
+
+// accuracy on validation set
+double val_acc = 0.0;
 
 int main(){
     printf("starting program\n");
@@ -55,7 +72,7 @@ int main(){
     // Now we have input layer as input_images. Next is convolution layer
 
     initialize_filters(fil_w, fil_b);
-    print_filters(fil_w, fil_b);
+    //print_filters(fil_w, fil_b);
 
 
     N_ROWS_CONV = n_rows - FIL_ROWS + 1;
@@ -67,8 +84,11 @@ int main(){
     N_ROWS_POOL = N_ROWS_CONV/POOL_DIM;
     N_COLS_POOL = N_COLS_CONV/POOL_DIM;
 
-    int pool_index_i[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL];
-    int pool_index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL];
+    int index_i[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL];
+    int index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL];
+
+    pool_index_i = index_i;
+    pool_index_j = index_j;
 
     // dimension: BATCH_SIZE*12*12
     build_args(&pool_t, N_COLS_POOL, N_ROWS_POOL, NUM_FILS, BATCH_SIZE);
@@ -84,21 +104,10 @@ int main(){
     initialize_weights_biases(&fully_con_w, &fully_con_b);
 
     // backprop to max-pool layer
-    tensor del_max_pool;
     build_args(&del_max_pool, N_COLS_POOL, N_ROWS_POOL, NUM_FILS, BATCH_SIZE);
 
     // backprop to conv layer
-    tensor del_conv;
     build_args(&del_conv, N_COLS_CONV, N_ROWS_CONV, NUM_FILS, BATCH_SIZE);
-
-
-    // accuracy on taining set
-    int preds[BATCH_SIZE];
-    double train_acc = 0.0;
-    int correct_preds = 0;
-
-    // accuracy on validation set
-    double val_acc = 0.0;
 
     num_val = NUM_VAL;
     num_train = number_of_images - num_val;
@@ -108,61 +117,14 @@ int main(){
 
     n_batches = num_train/BATCH_SIZE;
 
-    for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
+    if (BINARY_NET == 1)
     {
-        // Shuffle all 60 only once, they keep last 10 for validtion
-        if (epoch == 0)
-        {
-            shuffle(shuffle_index, number_of_images);
-        }
-        else
-        {
-            shuffle(shuffle_index, num_train);
-        }
-
-        correct_preds = 0;
-        for (int i = 0; i < n_batches; ++i)
-        {
-    	    convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, fil_w, fil_b, i*BATCH_SIZE, shuffle_index);
-    	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
-    	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
-    	    softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
-
-    	    bp_softmax_to_maxpool(&del_max_pool, softmax_out, labels, i*BATCH_SIZE, fully_con_w, shuffle_index);
-    	    bp_maxpool_to_conv(&del_conv, del_max_pool, conv_t, pool_index_i, pool_index_j);
-
-    	    // update weights and biases
-    	    update_sotmax_weights(&fully_con_w, softmax_out, pool_t, labels, i*BATCH_SIZE, shuffle_index);
-    	    update_sotmax_biases(&fully_con_b, softmax_out, labels, i*BATCH_SIZE, shuffle_index);
-    	    update_conv_weights(fil_w, del_conv, conv_t, input_images, i*BATCH_SIZE, shuffle_index);
-    	    update_conv_biases(fil_b, del_conv, conv_t);
-
-            correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
-
-            if( (i+1)%500 == 0 ){
-                train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
-
-                val_acc = validate();
-
-                printf("\nEpoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", epoch+1, i+1, train_acc, val_acc);
-                /*printf("\nPred\n");
-                print_tensor_1d(&softmax_out, 10, 0);
-                printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);*/
-
-                //print_filters(fil_w, fil_b);
-                //print_tensor_1d(&softmax_out, 10, 0);
-                //print_tensor(&fully_con_w, 0, 12);
-            }
-
-    	    reset_to_zero(&del_max_pool);
-    	    reset_to_zero(&del_conv);
-    	    reset_to_zero(&conv_t);
-    	    reset_to_zero(&pool_t);
-    	    reset_to_zero(&fully_con_out);
-    	    reset_to_zero(&softmax_out);
-        }
-}
-
+        binary_net();
+    }
+    else
+    {
+        normal_net();
+    }
 
     // testing convolution with last image in last batch
     //print_tensor(&input_images, shuffle_index[0], 28);
@@ -185,6 +147,125 @@ int main(){
     destroy(&del_max_pool);
 
     return 0;
+}
+
+void normal_net()
+{
+    for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
+    {
+        // Shuffle all 60 only once, they keep last 10 for validtion
+        if (epoch == 0)
+        {
+            shuffle(shuffle_index, number_of_images);
+        }
+        else
+        {
+            shuffle(shuffle_index, num_train);
+        }
+
+        correct_preds = 0;
+        for (int i = 0; i < n_batches; ++i)
+        {
+            convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, fil_w, fil_b, i*BATCH_SIZE, shuffle_index);
+            max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
+            feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
+            softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
+
+            bp_softmax_to_maxpool(&del_max_pool, softmax_out, labels, i*BATCH_SIZE, fully_con_w, shuffle_index);
+            bp_maxpool_to_conv(&del_conv, del_max_pool, conv_t, pool_index_i, pool_index_j);
+
+            // update weights and biases
+            update_sotmax_weights(&fully_con_w, softmax_out, pool_t, labels, i*BATCH_SIZE, shuffle_index);
+            update_sotmax_biases(&fully_con_b, softmax_out, labels, i*BATCH_SIZE, shuffle_index);
+            update_conv_weights(fil_w, del_conv, conv_t, input_images, i*BATCH_SIZE, shuffle_index);
+            update_conv_biases(fil_b, del_conv, conv_t);
+
+            correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
+
+            if( (i+1)%500 == 0 ){
+                train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
+
+                val_acc = validate();
+
+                printf("\nEpoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", epoch+1, i+1, train_acc, val_acc);
+                /*printf("\nPred\n");
+                print_tensor_1d(&softmax_out, 10, 0);
+                printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);*/
+
+                //print_filters(fil_w, fil_b);
+                //print_tensor_1d(&softmax_out, 10, 0);
+                //print_tensor(&fully_con_w, 0, 12);
+            }
+
+            reset_to_zero(&del_max_pool);
+            reset_to_zero(&del_conv);
+            reset_to_zero(&conv_t);
+            reset_to_zero(&pool_t);
+            reset_to_zero(&fully_con_out);
+            reset_to_zero(&softmax_out);
+        }
+    }
+}
+
+void binary_net()
+{
+    for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
+    {
+        // Shuffle all 60 only once, they keep last 10 for validtion
+        if (epoch == 0)
+        {
+            shuffle(shuffle_index, number_of_images);
+        }
+        else
+        {
+            shuffle(shuffle_index, num_train);
+        }
+
+        correct_preds = 0;
+        for (int i = 0; i < n_batches; ++i)
+        {
+            binarize(fil_w, fil_bin_w, alphas);
+
+            bin_convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, fil_bin_w, alphas, 
+                fil_b, i*BATCH_SIZE, shuffle_index);
+            max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
+            feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
+            softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
+
+            bp_softmax_to_maxpool(&del_max_pool, softmax_out, labels, i*BATCH_SIZE, fully_con_w, shuffle_index);
+            bp_maxpool_to_conv(&del_conv, del_max_pool, conv_t, pool_index_i, pool_index_j);
+
+            // update weights and biases
+            update_sotmax_weights(&fully_con_w, softmax_out, pool_t, labels, i*BATCH_SIZE, shuffle_index);
+            update_sotmax_biases(&fully_con_b, softmax_out, labels, i*BATCH_SIZE, shuffle_index);
+            update_conv_weights(fil_w, del_conv, conv_t, input_images, i*BATCH_SIZE, shuffle_index);
+            update_conv_biases(fil_b, del_conv, conv_t);
+
+            correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
+
+            if( (i+1)%500 == 0 ){
+                train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
+
+                val_acc = validate();
+
+                printf("\nEpoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", epoch+1, i+1, train_acc, val_acc);
+                /*printf("\nPred\n");
+                print_tensor_1d(&softmax_out, 10, 0);
+                printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);*/
+
+                print_bin_filters(fil_bin_w, alphas);
+                //print_tensor_1d(&softmax_out, 10, 0);
+                //print_tensor(&fully_con_w, 0, 12);
+            }
+
+            reset_to_zero(&del_max_pool);
+            reset_to_zero(&del_conv);
+            reset_to_zero(&conv_t);
+            reset_to_zero(&pool_t);
+            reset_to_zero(&fully_con_out);
+            reset_to_zero(&softmax_out);
+        }
+    }
 }
 
 void print_pool_mat(int mat1[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int mat2[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int num){

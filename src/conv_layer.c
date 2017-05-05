@@ -22,6 +22,26 @@ void convolution(tensor* input_t, tensor* conv_t, int n_rows, int n_cols, int ba
 	}
 }
 
+void bin_convolution(tensor* input_t, tensor* conv_t, int n_rows, int n_cols, int batch_size,
+	int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], double fil_b[NUM_FILS], int base, int shuffle_index[]){
+
+	for (int b = 0; b < batch_size; ++b)
+	{
+		for (int f = 0; f < NUM_FILS; ++f)
+		{
+			for (int i = 0; i < N_ROWS_CONV; ++i)
+			{
+				for (int j = 0; j < N_ROWS_CONV; ++j)
+				{
+					(conv_t->data)[offset(conv_t,b,j,i,f)] = bin_convolve(input_t, i, j, b+base, 
+																fil_bin_w, alphas, fil_b, f, shuffle_index);
+				}
+			}
+			
+		}
+	}
+}
+
 void initialize_filters(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_FILS]){
 
 	srand( time(NULL) );
@@ -67,6 +87,22 @@ void print_filters(double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double fil_b[NUM_
 	}
 }
 
+void print_bin_filters(int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS]){
+	for (int k = 0; k < NUM_FILS; ++k)
+	{
+		printf("k=%d, alpha=%f\nweights:\n", k, alphas[k]);
+		for (int i = 0; i < FIL_ROWS; ++i)
+		{
+			for (int j = 0; j < FIL_COLS; ++j)
+			{
+				printf("%3d, ", bin_fil_w[k][i][j]);				
+			}
+			printf("\n");
+		}
+		printf("\n");
+	}
+}
+
 // Tested!!
 double convolve(tensor* t, int r, int c, int image_num, double fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
 	double fil_b[NUM_FILS], int f, int shuffle_index[]){
@@ -79,6 +115,38 @@ double convolve(tensor* t, int r, int c, int image_num, double fil_w[NUM_FILS][F
 			conv_val += fil_w[f][i][j] * (t->data)[offset(t, shuffle_index[image_num], c+j, r+i, 0)];
 		}
 	}
+
+	conv_val += fil_b[f];
+
+	// applying ReLU
+	if (conv_val < 0.0)
+	{
+		conv_val = 0.0;
+	}
+
+	return conv_val;
+}
+
+double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS],
+	double fil_b[NUM_FILS], int f, int shuffle_index[]){
+
+	double conv_val = 0.0;
+	for (int i = 0; i < FIL_ROWS; ++i)
+	{
+		for (int j = 0; j < FIL_COLS; ++j)
+		{
+			if (fil_bin_w[f][i][j] == 1)
+			{
+				conv_val += (t->data)[offset(t, shuffle_index[image_num], c+j, r+i, 0)];
+			}
+			else
+			{
+			conv_val -= (t->data)[offset(t, shuffle_index[image_num], c+j, r+i, 0)];
+			}
+		}
+	}
+
+	conv_val *= alphas[f];
 
 	conv_val += fil_b[f];
 
