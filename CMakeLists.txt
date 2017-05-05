@@ -8,6 +8,7 @@
 cmake_minimum_required (VERSION 3.0.2)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 project (FNC_XNORNET)
+include(CMakeLibs.cmake)
 
 # ================================================================================
 # Reset the C flags
@@ -61,3 +62,7 @@ set(SOURCE_FILES
 add_executable(FNC_XNORNET ${SOURCE_FILES})
 
 target_link_libraries(FNC_XNORNET m)
+target_link_libraries(FNC_XNORNET pcm)
+if (DEFINED PCM_DEPENDENCIES)
+    add_dependencies(FNC_XNORNET ${PCM_DEPENDENCIES})
+endif(DEFINED PCM_DEPENDENCIES)

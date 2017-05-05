@@ -1,4 +1,5 @@
 #include "main.h"
+#include "perf.h"
 
 int N_ROWS_CONV;
 int N_COLS_CONV;
@@ -40,6 +41,8 @@ tensor softmax_out;
 void shuffle(int shuffle_index[], int number_of_images);
 
 int main(){
+    perf_init();
+
     printf("starting program\n");
 
     //test_tensor();
@@ -113,6 +116,7 @@ int main(){
     shuffle_index = malloc(number_of_images*sizeof(int));
 
     n_batches = num_train/BATCH_SIZE;
+
 
     for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
     {
