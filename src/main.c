@@ -41,7 +41,7 @@ tensor softmax_out;
 void shuffle(int shuffle_index[], int number_of_images);
 
 int main(){
-    perf_init();
+    //perf_init();
 
     printf("starting program\n");
 
@@ -117,7 +117,12 @@ int main(){
 
     n_batches = num_train/BATCH_SIZE;
 
-
+    int64_t conv_cycles = 0;
+    int64_t pool_cycles = 0;
+    int64_t fully_cycles = 0;
+    int64_t soft_cycles = 0;
+    int64_t bp_soft_to_pool_cycles = 0;
+    int64_t bp_pool_to_conv_cycles = 0;
     for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
     {
         // Shuffle all 60 only once, they keep last 10 for validtion
@@ -133,19 +138,35 @@ int main(){
         correct_preds = 0;
         for (int i = 0; i < n_batches; ++i)
         {
+            cycles_count_start();
     	    convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, &fil_w, &fil_b, i*BATCH_SIZE, shuffle_index);
-    	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
-    	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
-    	    softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
+            conv_cycles += cycles_count_stop();
 
-    	    bp_softmax_to_maxpool(&del_max_pool, softmax_out, labels, i*BATCH_SIZE, fully_con_w, shuffle_index);
-    	    bp_maxpool_to_conv(&del_conv, del_max_pool, conv_t, pool_index_i, pool_index_j);
+            cycles_count_start();
+    	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
+            pool_cycles += cycles_count_stop();
+
+            cycles_count_start();
+    	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
+            fully_cycles += cycles_count_stop();
+
+            cycles_count_start();
+    	    softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
+            soft_cycles += cycles_count_stop();
+
+            cycles_count_start();
+    	    bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
+    	    update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
+    	    update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
+            bp_soft_to_pool_cycles += cycles_count_stop();
+
+            cycles_count_start();
+    	    bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
+    	    update_conv_weights(&fil_w, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
+    	    update_conv_biases(&fil_b, &del_conv, &conv_t);
+            bp_pool_to_conv_cycles += cycles_count_stop();
 
     	    // update weights and biases
-    	    update_sotmax_weights(&fully_con_w, softmax_out, pool_t, labels, i*BATCH_SIZE, shuffle_index);
-    	    update_sotmax_biases(&fully_con_b, softmax_out, labels, i*BATCH_SIZE, shuffle_index);
-    	    update_conv_weights(&fil_w, del_conv, conv_t, input_images, i*BATCH_SIZE, shuffle_index);
-    	    update_conv_biases(&fil_b, del_conv, conv_t);
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
@@ -171,8 +192,21 @@ int main(){
     	    reset_to_zero(&fully_con_out);
     	    reset_to_zero(&softmax_out);
         }
-}
+    }
 
+    int64_t forward_cycles = conv_cycles + pool_cycles + fully_cycles + soft_cycles;
+    int64_t backward_cycles = bp_soft_to_pool_cycles + bp_pool_to_conv_cycles;
+    int64_t total_cycles = forward_cycles + backward_cycles;
+
+    printf("conv_cycles: %lld\n", conv_cycles);
+    printf("pool_cycles: %lld\n", pool_cycles);
+    printf("fully_cycles: %lld\n", fully_cycles);
+    printf("soft_cycles: %lld\n", soft_cycles);
+    printf("bp_soft_to_pool_cycles: %lld\n", bp_soft_to_pool_cycles);
+    printf("bp_pool_to_conv_cycles: %lld\n", bp_pool_to_conv_cycles);
+    printf("forward_cycles: %lld\n", forward_cycles);
+    printf("backward_cycles: %lld\n", backward_cycles);
+    printf("total_cycles: %lld\n", total_cycles);
 
     // testing convolution with last image in last batch
     //print_tensor(&input_images, shuffle_index[0], 28);
