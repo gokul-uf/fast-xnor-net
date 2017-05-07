@@ -99,8 +99,8 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 	}
 }
 
-void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t,
-	tensor* input_images, int base, int shuffle_index[]){
+void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor* input_images, 
+							int base, int shuffle_index[]){
 
 	for (int f = 0; f < NUM_FILS; ++f)
 	{
@@ -117,9 +117,9 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t,
 				    	{
 				    		for (int j = 0; j < N_COLS_CONV; ++j)
 				    		{
-				    			if(conv_t->data[offset(conv_t, b, j, i, f)] > 0.0){
-				    				delta_w += del_conv->data[offset(del_conv, b, j, i, f)]
-				    						* input_images->data[offset(input_images, shuffle_index[b+base], j+c, i+r, d)];
+				    			if( (conv_t->data)[offset(conv_t, b, j, i, f)] > 0.0 ){
+				    				delta_w += (del_conv->data)[offset(del_conv, b, j, i, f)]
+				    						* (input_images->data)[offset(input_images, shuffle_index[b+base], j+c, i+r, d)];
 				    			}
 				    		}
 				    	}

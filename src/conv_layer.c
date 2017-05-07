@@ -42,6 +42,26 @@ void bin_convolution(tensor* input_t, tensor* conv_t, int n_rows, int n_cols, in
 	}
 }
 
+void xnor_convolution(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], 
+						tensor* conv_t, int n_rows, int n_cols, int batch_size, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
+						double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[]){
+	for (int b = 0; b < batch_size; ++b)
+	{
+		for (int f = 0; f < NUM_FILS; ++f)
+		{
+			for (int i = 0; i < N_ROWS_CONV; ++i)
+			{
+				for (int j = 0; j < N_ROWS_CONV; ++j)
+				{
+					(conv_t->data)[offset(conv_t,b,j,i,f)] = xnor_convolve(bin_input_images, betas, i, j, b, 
+																fil_bin_w, alphas, fil_b, f);
+				}
+			}
+			
+		}
+	}
+}
+
 void initialize_filters(tensor* fil_w, tensor* fil_b) {
     srand(time(NULL));
 
@@ -140,6 +160,36 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 	}
 
 	conv_val *= alphas[f];
+
+	conv_val += fil_b.data[offset(&fil_b, f, 0, 0, 0)];
+
+	// applying ReLU
+	if (conv_val < 0.0)
+	{
+		conv_val = 0.0;
+	}
+
+	return conv_val;
+}
+
+double xnor_convolve(int t[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
+						int r, int c, int batch, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
+						double alphas[NUM_FILS], tensor fil_b, int f){
+
+	double conv_val = 0.0;
+	for (int i = 0; i < FIL_ROWS; ++i)
+	{
+		for (int j = 0; j < FIL_COLS; ++j)
+		{
+
+			// XNOR operation
+			//conv_val += ( t[batch][i+r][j+c] == fil_bin_w[f][i][j] );
+
+			conv_val += ( t[batch][i+r][j+c] * fil_bin_w[f][i][j] );
+		}
+	}
+
+	conv_val *= alphas[f]*betas[batch][r][c];
 
 	conv_val += fil_b.data[offset(&fil_b, f, 0, 0, 0)];
 
