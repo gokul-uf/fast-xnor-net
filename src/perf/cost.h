@@ -1,8 +1,9 @@
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef COST_H
+#define COST_H
 
 #include <stdint.h>
 #include <inttypes.h>
+#include <stdio.h>
 
 #define COST_T    uint64_t
 #define PRI_COST PRIu64
@@ -130,4 +131,4 @@ extern COST_T __costI_other;
 #define COST_INC_I_OTHER(x)
 
 #endif
-#endif // COMMON_H
+#endif // COST_H

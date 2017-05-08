@@ -12,10 +12,12 @@ int ReverseInt (int i)
     ch2=(i>>8)&255;
     ch3=(i>>16)&255;
     ch4=(i>>24)&255;
+
+    COST_INC_I_ADD(3);
     return((int)ch1<<24)+((int)ch2<<16)+((int)ch3<<8)+ch4;
 }
 
-void read_mnist_images_labels(char* images_path, char* labels_path , int* number_of_images, int* number_of_labels, 
+void read_mnist_images_labels(char* images_path, char* labels_path , int* number_of_images, int* number_of_labels,
 	int* n_rows, int* n_cols, tensor* input_tensor, int** labels) {
 
     FILE* fp_images;
@@ -30,7 +32,7 @@ void read_mnist_images_labels(char* images_path, char* labels_path , int* number
         // Read magic number from image file
         fread(&magic_number_images, sizeof(magic_number_images), 1, fp_images);
         magic_number_images = ReverseInt(magic_number_images);
-        if(magic_number_images != 2051) 
+        if(magic_number_images != 2051)
     	{
     		printf("Invalid MNIST image file!\n");
     	}
@@ -38,7 +40,7 @@ void read_mnist_images_labels(char* images_path, char* labels_path , int* number
     	// Read magic number from label file
     	fread(&magic_number_labels, sizeof(magic_number_labels), 1, fp_labels);
         magic_number_labels = ReverseInt(magic_number_labels);
-        if(magic_number_labels != 2049) 
+        if(magic_number_labels != 2049)
     	{
     		printf("Invalid MNIST label file!\n");
     	}
@@ -69,11 +71,15 @@ void read_mnist_images_labels(char* images_path, char* labels_path , int* number
         unsigned char temp_char = 0;
         for (int b = 0; b < (*number_of_images); ++b)
         {
+          COST_INC_I_ADD(1);
         	for (int w = 0; w < *n_cols; ++w)
         	{
+            COST_INC_I_ADD(1);
         		for (int h = 0; h < *n_rows; ++h)
         		{
+              COST_INC_I_ADD(1);
         			fread(&temp_char, sizeof(unsigned char), 1 , fp_images);
+              COST_INC_F_ADD(1); COST_INC_F_DIV(1);
         			(input_tensor->data)[offset(input_tensor,b,w,h,0)] = ((double)temp_char - 127)/127.0;
         		}
         	}
@@ -81,10 +87,11 @@ void read_mnist_images_labels(char* images_path, char* labels_path , int* number
 
         for (int i = 0; i < *number_of_labels; ++i)
         {
+          COST_INC_I_ADD(1);
         	fread(&temp_char, sizeof(unsigned char), 1 , fp_labels);
         	(*labels)[i] = (int)temp_char;
         }
-        
+
         fclose(fp_images);
         fclose(fp_labels);
 
@@ -98,8 +105,10 @@ void test_mnist_load(tensor t, int* labels, int number)
 	printf("\nIn test_mnist_load:\n");
 	printf("-------------------IMAGES:\n");
 	printf("BY RAW INDEX\n");
+  COST_INC_I_ADD(3); COST_INC_I_MUL(5);
     for (int i = (number-1)*28*28; i < (number-1)*28*28 + 28*7; ++i)
     {
+      COST_INC_I_ADD(1);
     	if(t.data[i] != 0)
     	printf("t.data[%d]=%f\n", i, t.data[i]);
     }
@@ -107,16 +116,20 @@ void test_mnist_load(tensor t, int* labels, int number)
     printf("\nBY OFFSET\n");
     for (int w = 0; w < 7; ++w)
     {
+      COST_INC_I_ADD(1);
     	for (int h = 0; h < 28; ++h)
     	{
+        COST_INC_I_ADD(4);
     		if(t.data[offset(&t,number-1,w,h,0)] != 0)
     		printf("t.data[%d]=%f\n",offset(&t,number-1,w,h,0), t.data[offset(&t,number-1,w,h,0)]);
     	}
     }
 
     printf("-------------------LABELS:\n");
+    COST_INC_I_ADD(1);
     for (int i = (number-10); i < number; ++i)
     {
+      COST_INC_I_ADD(1);
     	if(labels[i] != 0)
     	printf("labels[%d]=%d\n", i, labels[i]);
     }
@@ -133,7 +146,7 @@ void test_reverse_int()
     PRINT_INT_TO_BINARY(i)
 
     printf("i in big endian=%d\n", i);
-    
+
     i = ReverseInt(i);
     PRINT_INT_TO_BINARY(i)
     printf("i in little endian=%d\n", i);
@@ -147,7 +160,7 @@ void set_paths()
        printf("Current working dir: %s\n", cwd);
 
    char* c = cwd;
-
+   COST_INC_I_ADD(4);
    TRAIN_IMAGES = malloc(1024*sizeof(char));
    TRAIN_LABELS = malloc(1024*sizeof(char));
    TEST_IMAGES  = malloc(1024*sizeof(char));
@@ -158,6 +171,7 @@ void set_paths()
    {
 		if (*c == '/')
 		{
+      COST_INC_I_ADD(5);
 			TRAIN_IMAGES[i] = *c;
 			TRAIN_IMAGES[i+1] = *c;
 
@@ -181,10 +195,10 @@ void set_paths()
 			TEST_IMAGES[i] = *c;
 
 			TEST_LABELS[i] = *c;
-
+      COST_INC_I_ADD(1);
 			i++;
 		}
-
+    COST_INC_I_ADD(1);
 		c++;
    }
 
@@ -192,6 +206,7 @@ void set_paths()
    int j = i;
    while(*c != '\0'){
    	TRAIN_IMAGES[j++] = *c;
+    COST_INC_I_ADD(1);
    	c++;
    }
    TRAIN_IMAGES[j] = '\0';
@@ -199,6 +214,7 @@ void set_paths()
    c = "//data//train-labels.idx1-ubyte";
    j = i;
    while(*c != '\0'){
+     COST_INC_I_ADD(2);
    	TRAIN_LABELS[j++] = *c;
    	c++;
    }
@@ -207,6 +223,7 @@ void set_paths()
    c = "//data//t10k-images.idx3-ubyte";
    j = i;
    while(*c != '\0'){
+     COST_INC_I_ADD(2);
    	TEST_IMAGES[j++] = *c;
    	c++;
    }
@@ -215,6 +232,7 @@ void set_paths()
    c = "//data//t10k-labels.idx1-ubyte";
    j = i;
    while(*c != '\0'){
+     COST_INC_I_ADD(2);
    	TEST_LABELS[j++] = *c;
    	c++;
    }

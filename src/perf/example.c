@@ -3,7 +3,6 @@
 
 // important - for this to work, these 2 need to be here:
 #include "common_cost.h"
-#include "cost.h"
 
 COST_VARIABLES_HERE
 
@@ -35,7 +34,14 @@ int main(){
     }
   }
 
-  printf("\nRunning aux_code()...\n");
+
+  printf("\nRunning aux_code...\n");
+  aux_code();
+
+  print_cost_model();
+
+  COST_RESET
+
   aux_code();
 
   print_cost_model();

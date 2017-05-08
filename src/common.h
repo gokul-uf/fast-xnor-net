@@ -2,7 +2,7 @@
 #define COMMON_H
 
 #define BATCH_SIZE 10
-#define NUM_EPOCHS 20
+#define NUM_EPOCHS 5 // 20
 #define NUM_VAL 10000
 #define NUM_FILS 3
 #define FIL_ROWS 5
@@ -14,6 +14,9 @@
 #define BINARY_NET 2
 
 #include <stdio.h>
+
+#define COST_MEASURE 1
+#include "perf/cost.h"
 
 extern char* TRAIN_IMAGES;
 extern char* TRAIN_LABELS;

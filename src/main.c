@@ -1,6 +1,8 @@
 #include "main.h"
 #include "perf.h"
 
+COST_VARIABLES_HERE
+
 int NUM_IMAGES;
 int IMAGE_ROWS;
 int IMAGE_COLS;
@@ -58,14 +60,6 @@ int correct_preds = 0;
 // accuracy on validation set
 double val_acc = 0.0;
 
-// perf counters
-int64_t conv_cycles = 0;
-int64_t pool_cycles = 0;
-int64_t fully_cycles = 0;
-int64_t soft_cycles = 0;
-int64_t bp_soft_to_pool_cycles = 0;
-int64_t bp_pool_to_conv_cycles = 0;
-
 int main(){
     perf_init();
 
@@ -98,12 +92,14 @@ int main(){
     initialize_filters(&fil_w, &fil_b);
     print_filters(&fil_w, &fil_b);
 
+    COST_INC_I_ADD(4);
     N_ROWS_CONV = n_rows - FIL_ROWS + 1;
     N_COLS_CONV = n_cols - FIL_COLS + 1;
+
     // dimension: BATCH_SIZE*24*24
     build_args(&conv_t, N_COLS_CONV, N_ROWS_CONV, NUM_FILS, BATCH_SIZE);
 
-
+    COST_INC_I_DIV(2);
     N_ROWS_POOL = N_ROWS_CONV/POOL_DIM;
     N_COLS_POOL = N_COLS_CONV/POOL_DIM;
 
@@ -133,12 +129,18 @@ int main(){
     build_args(&del_conv, N_COLS_CONV, N_ROWS_CONV, NUM_FILS, BATCH_SIZE);
 
     num_val = NUM_VAL;
+    COST_INC_I_ADD(1);
     num_train = number_of_images - num_val;
 
     // First 50k indexes for training, next 10k indexes for validation
     shuffle_index = malloc(number_of_images*sizeof(int));
 
+    COST_INC_I_DIV(1);
     n_batches = num_train/BATCH_SIZE;
+
+    printf("Cost before running the network:");
+    print_cost_model();
+    COST_RESET
 
     if (BINARY_NET == 0)
     {
@@ -189,6 +191,7 @@ void normal_net()
 {
     for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
     {
+        COST_INC_I_ADD(1); // epoch++
         // Shuffle all 60k only once, they keep last 10k for validtion
         if (epoch == 0)
         {
@@ -202,77 +205,61 @@ void normal_net()
         correct_preds = 0;
         for (int i = 0; i < n_batches; ++i)
         {
+          COST_INC_I_ADD(1); // i++
 
-            cycles_count_start();
+          COST_INC_I_MUL(1);
     	    convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, &fil_w, &fil_b, i*BATCH_SIZE, shuffle_index);
-            conv_cycles += cycles_count_stop();
 
-            cycles_count_start();
     	    max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
-            pool_cycles += cycles_count_stop();
 
-            cycles_count_start();
     	    feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
-            fully_cycles += cycles_count_stop();
 
-            cycles_count_start();
     	    softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
-            soft_cycles += cycles_count_stop();
 
-            cycles_count_start();
+          COST_INC_I_MUL(3);
     	    bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
     	    update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
     	    update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
-            bp_soft_to_pool_cycles += cycles_count_stop();
 
-            cycles_count_start();
     	    bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
 
-            // update weights and biases
+          COST_INC_I_MUL(1);
+          // update weights and biases
     	    update_conv_weights(&fil_w, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
     	    update_conv_biases(&fil_b, &del_conv, &conv_t);
-            bp_pool_to_conv_cycles += cycles_count_stop();
 
+          COST_INC_I_ADD(1);
+          correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
-            correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
+          COST_INC_I_ADD(1); COST_INC_I_OTHER(1);
+          if( (i+1)%500 == 0 ){
+            COST_INC_I_ADD(1); COST_INC_I_MUL(2); COST_INC_I_DIV(1);
+              train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
 
-            if( (i+1)%500 == 0 ){
-                train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
+              val_acc = validate();
+              COST_INC_I_ADD(2);
+              printf("\nEpoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", epoch+1, i+1, train_acc, val_acc);
+              /*printf("\nPred\n");
+              print_tensor_1d(&softmax_out, 10, 0);
+              printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);*/
 
-                val_acc = validate();
+              //print_filters(fil_w, fil_b);
+              //print_tensor_1d(&softmax_out, 10, 0);
+              //print_tensor(&fully_con_w, 0, 12);
+          }
 
-                printf("\nEpoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", epoch+1, i+1, train_acc, val_acc);
-                /*printf("\nPred\n");
-                print_tensor_1d(&softmax_out, 10, 0);
-                printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);*/
-
-                //print_filters(fil_w, fil_b);
-                //print_tensor_1d(&softmax_out, 10, 0);
-                //print_tensor(&fully_con_w, 0, 12);
-            }
-
-            reset_to_zero(&del_max_pool);
-            reset_to_zero(&del_conv);
-            reset_to_zero(&conv_t);
-            reset_to_zero(&pool_t);
-            reset_to_zero(&fully_con_out);
-            reset_to_zero(&softmax_out);
+          reset_to_zero(&del_max_pool);
+          reset_to_zero(&del_conv);
+          reset_to_zero(&conv_t);
+          reset_to_zero(&pool_t);
+          reset_to_zero(&fully_con_out);
+          reset_to_zero(&softmax_out);
         }
+
+        print_cost_model();
+        COST_RESET
     }
 
-    int64_t forward_cycles = conv_cycles + pool_cycles + fully_cycles + soft_cycles;
-    int64_t backward_cycles = bp_soft_to_pool_cycles + bp_pool_to_conv_cycles;
-    int64_t total_cycles = forward_cycles + backward_cycles;
-
-    printf("conv_cycles: %lld\n", conv_cycles);
-    printf("pool_cycles: %lld\n", pool_cycles);
-    printf("fully_cycles: %lld\n", fully_cycles);
-    printf("soft_cycles: %lld\n", soft_cycles);
-    printf("bp_soft_to_pool_cycles: %lld\n", bp_soft_to_pool_cycles);
-    printf("bp_pool_to_conv_cycles: %lld\n", bp_pool_to_conv_cycles);
-    printf("forward_cycles: %lld\n", forward_cycles);
-    printf("backward_cycles: %lld\n", backward_cycles);
-    printf("total_cycles: %lld\n", total_cycles);
 }
 
 void binary_net()
@@ -280,6 +267,7 @@ void binary_net()
 
     for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
     {
+        COST_INC_I_ADD(1); // epoch++
         // Shuffle all 60k only once, they keep last 10k for validtion
         if (epoch == 0)
         {
@@ -293,11 +281,13 @@ void binary_net()
         correct_preds = 0;
         for (int i = 0; i < n_batches; ++i)
         {
+            COST_INC_I_ADD(1); // i++
             binarize_filters(&fil_w, fil_bin_w, alphas);
 
-            bin_convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, fil_bin_w, alphas, 
+            COST_INC_I_MUL(1);
+            bin_convolution(&input_images, &conv_t, n_rows, n_cols, BATCH_SIZE, fil_bin_w, alphas,
                 fil_b, i*BATCH_SIZE, shuffle_index);
-           
+
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
 
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
@@ -308,6 +298,7 @@ void binary_net()
 
             bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
 
+            COST_INC_I_MUL(3);
             // update weights and biases
             update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
@@ -315,13 +306,17 @@ void binary_net()
             update_conv_weights(&fil_w, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
             update_conv_biases(&fil_b, &del_conv, &conv_t);
 
+            COST_INC_I_ADD(1);
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
+            COST_INC_I_ADD(1); COST_INC_I_OTHER(1);
             if( (i+1)%500 == 0 ){
+                COST_INC_I_ADD(1); COST_INC_I_MUL(2); COST_INC_I_DIV(1);
                 train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
 
                 val_acc = bin_validate();
 
+                COST_INC_I_ADD(2);
                 printf("\nEpoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", epoch+1, i+1, train_acc, val_acc);
                 /*printf("\nPred\n");
                 print_tensor_1d(&softmax_out, 10, 0);
@@ -339,6 +334,8 @@ void binary_net()
             reset_to_zero(&fully_con_out);
             reset_to_zero(&softmax_out);
         }
+        print_cost_model();
+        COST_RESET
     }
 }
 
@@ -347,6 +344,7 @@ void xnor_net()
 
     for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
     {
+        COST_INC_I_ADD(1); // epoch++
         // Shuffle all 60k only once, they keep last 10k for validtion
         if (epoch == 0)
         {
@@ -360,14 +358,15 @@ void xnor_net()
         correct_preds = 0;
         for (int i = 0; i < n_batches; ++i)
         {
-
+            COST_INC_I_ADD(1); // i++
             binarize_filters(&fil_w, fil_bin_w, alphas);
 
+            COST_INC_I_MUL(2);
             // calculate betas
             bin_activation(&input_images, bin_input_images, shuffle_index, betas, BATCH_SIZE, i*BATCH_SIZE);
 
-            xnor_convolution(bin_input_images, betas, &conv_t, n_rows, n_cols, BATCH_SIZE, fil_bin_w, alphas, 
-                fil_b, i*BATCH_SIZE, shuffle_index);            
+            xnor_convolution(bin_input_images, betas, &conv_t, n_rows, n_cols, BATCH_SIZE, fil_bin_w, alphas,
+                fil_b, i*BATCH_SIZE, shuffle_index);
 
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
 
@@ -375,10 +374,12 @@ void xnor_net()
 
             softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
 
+            COST_INC_I_MUL(1);
             bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
 
             bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
 
+            COST_INC_I_MUL(3);
             // update weights and biases
             update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
@@ -386,14 +387,19 @@ void xnor_net()
             update_conv_weights(&fil_w, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
             update_conv_biases(&fil_b, &del_conv, &conv_t);
 
+            COST_INC_I_ADD(1);
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
+            COST_INC_I_ADD(1); COST_INC_I_OTHER(1);
             if( (i+1)%1000 == 0 ){
+
+                COST_INC_I_ADD(1); COST_INC_I_MUL(2); COST_INC_I_DIV(1);
                 train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
 
                 val_acc = xnor_validate();
 
-                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                COST_INC_I_ADD(2);
+                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
                                 BINARY_NET, epoch+1, i+1, train_acc, val_acc);
                 /*printf("\nPred\n");
                 print_tensor_1d(&softmax_out, 10, 0);
@@ -411,6 +417,9 @@ void xnor_net()
             reset_to_zero(&fully_con_out);
             reset_to_zero(&softmax_out);
         }
+
+        print_cost_model();
+        COST_RESET
     }
 }
 
@@ -418,8 +427,10 @@ void print_pool_mat(int mat1[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], in
 	printf("Max Pooling: %d\n", num);
 	for (int i = 0; i < N_ROWS_POOL; ++i)
 	{
+    COST_INC_I_ADD(1); // i++
 		for (int j = 0; j < N_COLS_POOL; ++j)
 		{
+      COST_INC_I_ADD(1); //j++
 			printf("%2d-%2d, ", mat1[num][0][i][j], mat2[num][0][i][j]);
 		}
 		printf("\n");
@@ -432,8 +443,12 @@ int calc_correct_preds(int preds[BATCH_SIZE], int* labels, int num_batch, int sh
     int ret = 0;
     for (int i = 0; i < BATCH_SIZE; ++i)
     {
+        COST_INC_I_ADD(1); // i++
+
+        COST_INC_I_ADD(1); // base+i
         if (preds[i] == labels[ shuffle_index[base+i] ])
         {
+            COST_INC_I_ADD(1);
             ret++;
         }
     }
@@ -447,17 +462,21 @@ void shuffle(int shuffle_index[], int number_of_images){
 
     for (int i = 0; i < number_of_images; ++i)
     {
+        COST_INC_I_ADD(1); // i++
         shuffle_index[i] = i;
     }
 
     for (int i = number_of_images-1; i >= 0; --i){
-    //generate a random number [0, n-1]
-    int j = rand() % (i+1);
+        COST_INC_I_ADD(2); // i-- and (i+1)
+        COST_INC_I_OTHER(1); // %
 
-    //swap the last element with element at random index
-    int temp = shuffle_index[i];
-    shuffle_index[i] = shuffle_index[j];
-    shuffle_index[j] = temp;
+        //generate a random number [0, n-1]
+        int j = rand() % (i+1);
+
+        //swap the last element with element at random index
+        int temp = shuffle_index[i];
+        shuffle_index[i] = shuffle_index[j];
+        shuffle_index[j] = temp;
     }
 }
 
@@ -466,15 +485,17 @@ double validate(){
     int pred[1];
     int correct_preds = 0;
     for (int i = num_train; i < num_train + num_val; ++i)
-        {
-            convolution(&input_images, &conv_t, n_rows, n_cols, 1, &fil_w, &fil_b, i, shuffle_index);
-            max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
-            feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
-            softmax(&fully_con_out, &softmax_out, pred, 1);
+    {
+        COST_INC_I_ADD(1); // i++
+        convolution(&input_images, &conv_t, n_rows, n_cols, 1, &fil_w, &fil_b, i, shuffle_index);
+        max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
+        feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
+        softmax(&fully_con_out, &softmax_out, pred, 1);
 
-            correct_preds += (labels[shuffle_index[i]] == pred[0]);
-        }
-
+        COST_INC_I_ADD(1);
+        correct_preds += (labels[shuffle_index[i]] == pred[0]);
+    }
+    COST_INC_I_MUL(1); COST_INC_I_DIV(1);
     return (correct_preds*100.0) / num_val;
 }
 
@@ -483,16 +504,19 @@ double bin_validate(){
     int pred[1];
     int correct_preds = 0;
     for (int i = num_train; i < num_train + num_val; ++i)
-        {
-            bin_convolution(&input_images, &conv_t, n_rows, n_cols, 1, fil_bin_w, alphas, 
-                fil_b, i, shuffle_index);
-            max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
-            feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
-            softmax(&fully_con_out, &softmax_out, pred, 1);
+    {
+        COST_INC_I_ADD(1); // i++
+        bin_convolution(&input_images, &conv_t, n_rows, n_cols, 1, fil_bin_w, alphas,
+            fil_b, i, shuffle_index);
+        max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
+        feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
+        softmax(&fully_con_out, &softmax_out, pred, 1);
 
-            correct_preds += (labels[shuffle_index[i]] == pred[0]);
-        }
+        COST_INC_I_ADD(1);
+        correct_preds += (labels[shuffle_index[i]] == pred[0]);
+    }
 
+    COST_INC_I_MUL(1); COST_INC_I_DIV(1);
     return (correct_preds*100.0) / num_val;
 }
 
@@ -501,21 +525,37 @@ double xnor_validate(){
     int pred[1];
     int correct_preds = 0;
     for (int i = num_train; i < num_train + num_val; ++i)
-        {
-            // calculate betas
-            bin_activation(&input_images, bin_input_images, shuffle_index, betas, 1, i);
+    {
+        COST_INC_I_ADD(1); // i++
+        // calculate betas
+        bin_activation(&input_images, bin_input_images, shuffle_index, betas, 1, i);
 
-            xnor_convolution(bin_input_images, betas, &conv_t, n_rows, n_cols, 1, fil_bin_w, alphas, 
-                fil_b, i, shuffle_index);
+        xnor_convolution(bin_input_images, betas, &conv_t, n_rows, n_cols, 1, fil_bin_w, alphas,
+            fil_b, i, shuffle_index);
 
-            max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
-            feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
-            softmax(&fully_con_out, &softmax_out, pred, 1);
+        max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
+        feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
+        softmax(&fully_con_out, &softmax_out, pred, 1);
 
-            correct_preds += (labels[shuffle_index[i]] == pred[0]);
-        }
-
+        COST_INC_I_ADD(1);
+        correct_preds += (labels[shuffle_index[i]] == pred[0]);
+    }
+    COST_INC_I_MUL(1); COST_INC_I_DIV(1);
     return (correct_preds*100.0) / num_val;
 }
 
+void print_cost_model(){
+  printf("\n\nCost Model FLOATS:\n");
+  printf("  Add: %"PRI_COST"\n", COST_F_ADD);
+  printf("  Mul: %"PRI_COST"\n", COST_F_MUL);
+  printf("  Div: %"PRI_COST"\n", COST_F_DIV);
+  printf("  Max: %"PRI_COST"\n", COST_F_MAX);
+  printf("  Oth: %"PRI_COST"\n", COST_F_OTHER);
 
+  printf("\nCost Model INTS:\n");
+  printf("  Add: %"PRI_COST"\n", COST_I_ADD);
+  printf("  Mul: %"PRI_COST"\n", COST_I_MUL);
+  printf("  Div: %"PRI_COST"\n", COST_I_DIV);
+  printf("  Max: %"PRI_COST"\n", COST_I_MAX);
+  printf("  Oth: %"PRI_COST"\n", COST_I_OTHER);
+}

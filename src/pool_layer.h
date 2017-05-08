@@ -5,5 +5,6 @@
 #include <stdlib.h>
 #include "tensor.h"
 #include "conv_layer.h"
+#include "common.h"
 
 #endif
