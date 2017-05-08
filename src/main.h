@@ -16,7 +16,8 @@ double validate();
 void shuffle(int shuffle_index[], int number_of_images);
 double bin_validate();
 double xnor_validate();
+void xnor_net();
+void normal_net();
+void binary_net();
 
 #endif //FNC_MAIN_H
-
-
