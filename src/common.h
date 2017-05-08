@@ -20,6 +20,7 @@ extern char* TRAIN_LABELS;
 extern char* TEST_IMAGES;
 extern char* TEST_LABELS;
 extern int NUM_IMAGES;
+extern int NUM_LABELS;
 extern int IMAGE_ROWS;
 extern int IMAGE_COLS;
 extern int N_ROWS_CONV;

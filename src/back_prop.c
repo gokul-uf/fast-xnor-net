@@ -45,8 +45,7 @@ void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels,
 	}
 }
 
-void bp_softmax_to_maxpool(tensor* del_max_pool, tensor* softmax_out, int* labels, int base, tensor* fully_con_w, 
-	int shuffle_index[]){
+void bp_softmax_to_maxpool(tensor* del_max_pool, tensor* softmax_out, int* labels, int base, tensor* fully_con_w, int shuffle_index[]){
 	double sum = 0.0;
 	double delta = 0.0;
 
@@ -99,8 +98,7 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 	}
 }
 
-void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor* input_images, 
-							int base, int shuffle_index[]){
+void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor* input_images, int base, int shuffle_index[]){
 
 	for (int f = 0; f < NUM_FILS; ++f)
 	{

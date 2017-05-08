@@ -24,8 +24,7 @@
 #include "common.h"
 
 int ReverseInt (int i);
-void read_mnist_images_labels(char* images_path, char* labels_path , int* number_of_images, int* number_of_labels, 
-	int* n_rows, int* n_cols, tensor* input_tensor, int** labels);
+void read_mnist_images_labels(char* images_path, char* labels_path, tensor* input_tensor, int** labels);
 void test_mnist_load(tensor t, int* labels, int number);
 void test_reverse_int();
 void set_paths();

@@ -5,6 +5,11 @@ char* TRAIN_LABELS = "";
 char* TEST_IMAGES  = "";
 char* TEST_LABELS  = "";
 
+int NUM_IMAGES;
+int NUM_LABELS;
+int IMAGE_ROWS;
+int IMAGE_COLS;
+
 int ReverseInt (int i)
 {
     unsigned char ch1, ch2, ch3, ch4;
@@ -15,8 +20,7 @@ int ReverseInt (int i)
     return((int)ch1<<24)+((int)ch2<<16)+((int)ch3<<8)+ch4;
 }
 
-void read_mnist_images_labels(char* images_path, char* labels_path , int* number_of_images, int* number_of_labels, 
-	int* n_rows, int* n_cols, tensor* input_tensor, int** labels) {
+void read_mnist_images_labels(char* images_path, char* labels_path, tensor* input_tensor, int** labels) {
 
     FILE* fp_images;
     FILE* fp_labels;
@@ -44,34 +48,34 @@ void read_mnist_images_labels(char* images_path, char* labels_path , int* number
     	}
 
     	// Read number of images from image file
-        fread(number_of_images, sizeof(*number_of_images), 1, fp_images);
-        *number_of_images = ReverseInt(*number_of_images);
+        fread(&NUM_IMAGES, sizeof(NUM_IMAGES), 1, fp_images);
+        NUM_IMAGES = ReverseInt(NUM_IMAGES);
 
         // Read number of labels from label file
-        fread(number_of_labels, sizeof(*number_of_labels), 1, fp_labels);
-        *number_of_labels = ReverseInt(*number_of_labels);
+        fread(&NUM_LABELS, sizeof(NUM_LABELS), 1, fp_labels);
+        NUM_LABELS = ReverseInt(NUM_LABELS);
 
         // allocate space for labels
-        *labels = malloc(*number_of_labels * sizeof(int));
+        *labels = malloc(NUM_LABELS * sizeof(int));
 
         // Read number of rows in each image
-        fread(n_rows, sizeof(*n_rows), 1, fp_images);
-        *n_rows = ReverseInt(*n_rows);
+        fread(&IMAGE_ROWS, sizeof(IMAGE_ROWS), 1, fp_images);
+        IMAGE_ROWS = ReverseInt(IMAGE_ROWS);
 
         // Read number of cols in each image
-        fread(n_cols, sizeof(*n_cols), 1, fp_images);
-        *n_cols = ReverseInt(*n_cols);
+        fread(&IMAGE_COLS, sizeof(IMAGE_COLS), 1, fp_images);
+        IMAGE_COLS = ReverseInt(IMAGE_COLS);
 
         // Depth is 1, since only one channel for mnist images
-        build_args(input_tensor, *n_cols, *n_rows, 1, *number_of_images);
+        build_args(input_tensor, IMAGE_COLS, IMAGE_ROWS, 1, NUM_IMAGES);
 
         // Read pixel bytes
         unsigned char temp_char = 0;
-        for (int b = 0; b < (*number_of_images); ++b)
+        for (int b = 0; b < NUM_IMAGES; ++b)
         {
-        	for (int w = 0; w < *n_cols; ++w)
+        	for (int w = 0; w < IMAGE_COLS; ++w)
         	{
-        		for (int h = 0; h < *n_rows; ++h)
+        		for (int h = 0; h < IMAGE_ROWS; ++h)
         		{
         			fread(&temp_char, sizeof(unsigned char), 1 , fp_images);
         			(input_tensor->data)[offset(input_tensor,b,w,h,0)] = ((double)temp_char - 127)/127.0;
@@ -79,7 +83,7 @@ void read_mnist_images_labels(char* images_path, char* labels_path , int* number
         	}
         }
 
-        for (int i = 0; i < *number_of_labels; ++i)
+        for (int i = 0; i < NUM_LABELS; ++i)
         {
         	fread(&temp_char, sizeof(unsigned char), 1 , fp_labels);
         	(*labels)[i] = (int)temp_char;
