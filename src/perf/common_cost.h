@@ -6,3 +6,4 @@
  */
 
 #define COST_MEASURE 1
+#include "cost.h"

@@ -1,3 +1,6 @@
+#ifndef COMMON_H
+#define COMMON_H
+
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -127,3 +130,4 @@ extern COST_T __costI_other;
 #define COST_INC_I_OTHER(x)
 
 #endif
+#endif // COMMON_H
