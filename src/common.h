@@ -2,7 +2,7 @@
 #define COMMON_H
 
 #define BATCH_SIZE 10
-#define NUM_EPOCHS 20
+#define NUM_EPOCHS 5
 #define NUM_VAL 10000
 #define NUM_FILS 3
 #define FIL_ROWS 5
@@ -11,7 +11,7 @@
 #define POOL_DIM 2
 #define N_DIGS 10
 #define LEARN_RATE 0.01
-#define BINARY_NET 2
+#define BINARY_NET 0
 
 #include <stdio.h>
 
