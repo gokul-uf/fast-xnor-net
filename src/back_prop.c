@@ -130,6 +130,55 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 	}
 }
 
+void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+								tensor* input_images, int base, int shuffle_index[])
+{
+	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
+
+	for (int f = 0; f < NUM_FILS; ++f)
+	{
+		for (int r = 0; r < FIL_ROWS; ++r)
+		{
+			for (int c = 0; c < FIL_COLS; ++c)
+			{
+                for(int d = 0; d < FIL_DEPTH; ++d)
+                {
+				    double delta_w = 0.0;
+
+				    for (int b = 0; b < BATCH_SIZE; ++b)
+				    {
+				    	for (int i = 0; i < N_ROWS_CONV; ++i)
+				    	{
+				    		for (int j = 0; j < N_COLS_CONV; ++j)
+				    		{
+				    			// need this if because of the ReLU function
+				    			if( (conv_t->data)[offset(conv_t, b, j, i, f)] > 0.0 ){
+				    				delta_w += (del_conv->data)[offset(del_conv, b, j, i, f)]
+				    						* (input_images->data)[offset(input_images, shuffle_index[b+base], j+c, i+r, d)];
+				    			}
+				    		}
+				    	}
+				    }
+
+				    // modifying delta_w to account for sign function applied on weights
+				    double weight = (fil_w->data)[offset(fil_w, f, r, c, d)];
+				    
+				    if (weight <= 1 && weight >= -1)
+				    {
+				    	delta_w *= ( (alphas[f]*weight) +  recip_n);
+				    }
+				    else
+			    	{
+			    		delta_w *= recip_n;
+			    	}
+				    
+				    (fil_w->data)[offset(fil_w, f, r, c, d)] = weight - (LEARN_RATE/BATCH_SIZE)*delta_w;
+                }
+			}
+		}
+	}
+}
+
 void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t){
 
 	for (int f = 0; f < NUM_FILS; ++f)
