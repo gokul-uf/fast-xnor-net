@@ -400,7 +400,7 @@ void xnor_net()
             reset_to_zero(&fully_con_out);
             reset_to_zero(&softmax_out);
         }
-        forward_cycles = binarize_cycles + conv_cycles + pool_cycles + fully_cycles + soft_cycles;
+        forward_cycles = xnor_cycles + conv_cycles + pool_cycles + fully_cycles + soft_cycles;
         backward_cycles = bp_soft_to_pool_cycles + bp_pool_to_conv_cycles;
         total_cycles = forward_cycles + backward_cycles;
 
