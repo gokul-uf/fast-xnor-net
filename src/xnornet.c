@@ -5,28 +5,88 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 
 	for (int f = 0; f < NUM_FILS; ++f)
 	{
-		double sum = 0.0, abs_val;
-		for (int r = 0; r < FIL_ROWS; ++r)
+		double sum1 = 0.0, sum2 = 0.0, sum3 = 0.0, sum4 = 0.0, sum; 
+		double abs_val1, abs_val2, abs_val3, abs_val4;
+
+		int r, c;
+		
+		for (r = 0; r+1 < FIL_ROWS; r=r+2)
 		{
-			for (int c = 0; c < FIL_COLS; ++c)
+			for (c = 0; c+1 < FIL_COLS; c=c+2)
+			{
+				double mat_val_1 = (fil_w->data)[offset(fil_w, f, c  , r  , 0)];
+				double mat_val_2 = (fil_w->data)[offset(fil_w, f, c+1, r  , 0)];
+				double mat_val_3 = (fil_w->data)[offset(fil_w, f, c  , r+1, 0)];
+				double mat_val_4 = (fil_w->data)[offset(fil_w, f, c+1, r+1, 0)];
+
+				if (mat_val_1 < 0.0)
+				{
+					abs_val1 = -mat_val_1;
+					bin_fil_w[f][r][c] = -1;
+				}
+				else{
+					abs_val1 = mat_val_1;
+					bin_fil_w[f][r][c] = 1;
+				}
+
+				if (mat_val_2 < 0.0)
+				{
+					abs_val2 = -mat_val_2;
+					bin_fil_w[f][r][c+1] = -1;
+				}
+				else{
+					abs_val2 = mat_val_2;
+					bin_fil_w[f][r][c+1] = 1;
+				}
+
+				if (mat_val_3 < 0.0)
+				{
+					abs_val3 = -mat_val_3;
+					bin_fil_w[f][r+1][c] = -1;
+				}
+				else{
+					abs_val3 = mat_val_3;
+					bin_fil_w[f][r+1][c] = 1;
+				}
+
+				if (mat_val_4 < 0.0)
+				{
+					abs_val4 = -mat_val_4;
+					bin_fil_w[f][r+1][c+1] = -1;
+				}
+				else{
+					abs_val4 = mat_val_4;
+					bin_fil_w[f][r+1][c+1] = 1;
+				}
+
+				sum1 += abs_val1;
+				sum2 += abs_val2;
+				sum3 += abs_val3;
+				sum4 += abs_val4;
+			}
+		}
+
+		sum = sum1 + sum2 + sum3 + sum3;
+
+		r = r-2;
+		c = c-2;
+		for (; r < FIL_ROWS; ++r)
+		{
+			for (; c < FIL_COLS; ++c)
 			{
 				double mat_val = (fil_w->data)[offset(fil_w, f, c, r, 0)];
 
 				if (mat_val < 0.0)
 				{
+					abs_val1 = -mat_val;
 					bin_fil_w[f][r][c] = -1;
 				}
 				else{
+					abs_val1 = mat_val;
 					bin_fil_w[f][r][c] = 1;
 				}
 
-				abs_val = mat_val;
-				if (abs_val < 0.0)
-				{
-					abs_val = -1.0 * abs_val;
-				}
-
-				sum += abs_val;
+				sum += abs_val1;
 			}
 		}
 

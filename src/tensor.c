@@ -49,6 +49,22 @@ void test_tensor()
     printf("\ntest_tensor done!\n\n");
 }
 
+void test_offset()
+{
+    printf("\nIn test_tensor:\n\n");
+    tensor* t;
+    build(t);
+    int i = offset(t,0,0,0,0);
+    int j = offset(t,0,0,1,0);
+    int k = offset(t,0,1,0,0);
+    int l = offset(t,0,1,1,0);
+    
+    printf("%d %d %d %d\n", i, j, k, l);
+    destroy(t);
+
+    printf("\ntest_tensor done!\n\n");
+}
+
 void print_tensor(tensor* t, int image_num, int len){
     printf("Tensor: %d\n", image_num);
     for (int i = 0; i < len; ++i)

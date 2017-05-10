@@ -6,6 +6,9 @@
 #define T_DEPTH 1 // grey-scale images, change to 3 for RGB
 #define T_BATCH_SIZE 1
 
+/*#define offset(t, b, w, h, d ) \
+    ( ( b * ((t)->width) * ((t)->height) * ((t)->depth) ) + ( w * ((t)->height) * ((t)->depth) ) + ( h * ((t)->depth) ) + d ) \*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

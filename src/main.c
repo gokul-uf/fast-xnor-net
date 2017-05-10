@@ -54,30 +54,34 @@ int correct_preds = 0;
 double val_acc = 0.0;
 
 // perf counters
+int64_t binarize_cycles = 0;
 int64_t conv_cycles = 0;
 int64_t pool_cycles = 0;
 int64_t fully_cycles = 0;
 int64_t soft_cycles = 0;
 int64_t bp_soft_to_pool_cycles = 0;
 int64_t bp_pool_to_conv_cycles = 0;
+int64_t forward_cycles = 0;
+int64_t backward_cycles = 0;
+int64_t total_cycles = 0;
 
 int main(){
     perf_init();
 
     printf("starting program\n");
 
-    //test_tensor();
+    //test_offset();
     //test_reverse_int();
 
     set_paths();
 
     read_mnist_images_labels(TRAIN_IMAGES, TRAIN_LABELS, &input_images, &labels);
 
-    printf("number_of_images=%d\n", NUM_IMAGES);
+    /*printf("number_of_images=%d\n", NUM_IMAGES);
     printf("number_of_labels=%d\n", NUM_IMAGES);
     printf("n_rows in each image=%d\n", IMAGE_ROWS);
     printf("n_cols in each image=%d\n\n", IMAGE_COLS);
-
+*/
     //test_mnist_load(input_images, labels, NUM_IMAGES);
 
     // Now we have input layer as input_images. Next is convolution layer
@@ -86,7 +90,7 @@ int main(){
     build_args(&fil_w, FIL_COLS, FIL_ROWS, FIL_DEPTH, NUM_FILS);
     build_args(&fil_b, 1, 1, 1, NUM_FILS);
     initialize_filters(&fil_w, &fil_b);
-    print_filters(&fil_w, &fil_b);
+    //print_filters(&fil_w, &fil_b);
 
     N_ROWS_CONV = IMAGE_ROWS - FIL_ROWS + 1;
     N_COLS_CONV = IMAGE_COLS - FIL_COLS + 1;
@@ -231,7 +235,8 @@ void normal_net()
 
                 val_acc = validate();
 
-                printf("\nEpoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", epoch+1, i+1, train_acc, val_acc);
+                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                            BINARY_NET, epoch+1, i+1, train_acc, val_acc);
                 /*printf("\nPred\n");
                 print_tensor_1d(&softmax_out, 10, 0);
                 printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);*/
@@ -268,7 +273,7 @@ void normal_net()
 void binary_net()
 {
 
-    for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
+    for (int epoch = 0; epoch < 1; ++epoch)
     {
         // Shuffle all 60k only once, they keep last 10k for validtion
         if (epoch == 0)
@@ -281,29 +286,40 @@ void binary_net()
         }
 
         correct_preds = 0;
-        for (int i = 0; i < n_batches; ++i)
+        for (int i = 0; i < 1; ++i)
         {
+            cycles_count_start();
             binarize_filters(&fil_w, fil_bin_w, alphas);
+            binarize_cycles += cycles_count_stop();
 
-            bin_convolution(&input_images, &conv_t, BATCH_SIZE, fil_bin_w, alphas, 
-                fil_b, i*BATCH_SIZE, shuffle_index);
+            cycles_count_start();
+            bin_convolution(&input_images, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index);
+            conv_cycles += cycles_count_stop();
            
+            cycles_count_start();
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
+            pool_cycles += cycles_count_stop();
 
+            cycles_count_start();
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
+            fully_cycles += cycles_count_stop();
 
+            cycles_count_start();
             softmax(&fully_con_out, &softmax_out, preds, BATCH_SIZE);
+            soft_cycles += cycles_count_stop();
 
+            cycles_count_start();
             bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
-
-            bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
 
             // update weights and biases
             update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
+            bp_soft_to_pool_cycles += cycles_count_stop();
 
-            bin_update_conv_weights(&fil_w, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
+            bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
+            bin_update_conv_weights(&fil_w, &fil_bin_w, alphas, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
             update_conv_biases(&fil_b, &del_conv, &conv_t);
+            bp_pool_to_conv_cycles += cycles_count_stop();
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
@@ -312,7 +328,8 @@ void binary_net()
 
                 val_acc = bin_validate();
 
-                printf("\nEpoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", epoch+1, i+1, train_acc, val_acc);
+                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                            BINARY_NET, epoch+1, i+1, train_acc, val_acc);
                 /*printf("\nPred\n");
                 print_tensor_1d(&softmax_out, 10, 0);
                 printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);*/
@@ -329,6 +346,23 @@ void binary_net()
             reset_to_zero(&fully_con_out);
             reset_to_zero(&softmax_out);
         }
+
+        forward_cycles = binarize_cycles + conv_cycles + pool_cycles + fully_cycles + soft_cycles;
+        backward_cycles = bp_soft_to_pool_cycles + bp_pool_to_conv_cycles;
+        total_cycles = forward_cycles + backward_cycles;
+
+        printf("epoch %d:\n", epoch+1);
+        printf("binarize_cycles: %lld\n", binarize_cycles);
+        printf("conv_cycles: %lld\n", conv_cycles);
+        printf("pool_cycles: %lld\n", pool_cycles);
+        printf("fully_cycles: %lld\n", fully_cycles);
+        printf("soft_cycles: %lld\n", soft_cycles);
+        printf("bp_soft_to_pool_cycles: %lld\n", bp_soft_to_pool_cycles);
+        printf("bp_pool_to_conv_cycles: %lld\n", bp_pool_to_conv_cycles);
+        printf("forward_cycles: %lld\n", forward_cycles);
+        printf("backward_cycles: %lld\n", backward_cycles);
+        printf("total_cycles: %lld\n", total_cycles);
+        printf("\n");
     }
 }
 
@@ -356,8 +390,7 @@ void xnor_net()
             // calculate betas
             bin_activation(&input_images, bin_input_images, shuffle_index, betas, BATCH_SIZE, i*BATCH_SIZE);
 
-            xnor_convolution(bin_input_images, betas, &conv_t, BATCH_SIZE, fil_bin_w, alphas, 
-                fil_b, i*BATCH_SIZE, shuffle_index);            
+            xnor_convolution(bin_input_images, betas, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index);            
 
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
 
