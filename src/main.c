@@ -273,7 +273,7 @@ void normal_net()
 void binary_net()
 {
 
-    for (int epoch = 0; epoch < 1; ++epoch)
+    for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
     {
         // Shuffle all 60k only once, they keep last 10k for validtion
         if (epoch == 0)
@@ -286,7 +286,7 @@ void binary_net()
         }
 
         correct_preds = 0;
-        for (int i = 0; i < 1; ++i)
+        for (int i = 0; i < n_batches; ++i)
         {
             cycles_count_start();
             binarize_filters(&fil_w, fil_bin_w, alphas);
