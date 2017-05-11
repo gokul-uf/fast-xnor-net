@@ -50,7 +50,7 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 					int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int f)
 {
 	double conv_val1, conv_val2, conv_val3, conv_val4, conv_val5, conv_val6, conv_val7, conv_val8;
-	double conv_img1, conv_img2, conv_img1_rem = 0.0, conv_img2_rem = 0.0;
+	double conv_img1, conv_img2, conv_img1_rem = 0.0, conv_img2_rem = 0.0, conv_img1_last = 0.0, conv_img2_last = 0.0;
 	conv_val1 = 0.0;
 	conv_val2 = 0.0;
 	conv_val3 = 0.0;
@@ -60,24 +60,28 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 	conv_val7 = 0.0;
 	conv_val8 = 0.0;
 
+	double bias = fil_b.data[offset(&fil_b, f, 0, 0, 0)];
+
+	double mat1, mat2, mat3, mat4;
+	double mat5, mat6, mat7, mat8;
+
+	int fil1, fil2, fil3, fil4;
+
 	int i, j;
-	for (i = 0; i < FIL_ROWS; i=i+1)
+	for (i = 0; i < FIL_ROWS; i=i+2)
 	{
-		for (j = 0; j+1 < FIL_COLS; j=j+1)
+		for (j = 0; j+1 < FIL_COLS; j=j+2)
 		{
-			double mat1, mat2, mat3, mat4;
 			mat1 = (t->data)[offset(t, cur_image1, c+j  ,   r+i, 0)];
 			mat2 = (t->data)[offset(t, cur_image1, c+j+1,   r+i, 0)];
 			mat3 = (t->data)[offset(t, cur_image1, c+j,   r+i+1, 0)];
 			mat4 = (t->data)[offset(t, cur_image1, c+j+1, r+i+1, 0)];
 
-			double mat5, mat6, mat7, mat8;
 			mat5 = (t->data)[offset(t, cur_image2, c+j  ,   r+i, 0)];
 			mat6 = (t->data)[offset(t, cur_image2, c+j+1,   r+i, 0)];
 			mat7 = (t->data)[offset(t, cur_image2, c+j,   r+i+1, 0)];
 			mat8 = (t->data)[offset(t, cur_image2, c+j+1, r+i+1, 0)];
 
-			int fil1, fil2, fil3, fil4;
 			fil1 = fil_bin_w[f][i  ][j  ];
 			fil2 = fil_bin_w[f][i  ][j+1];
 			fil3 = fil_bin_w[f][i+1][j  ];
@@ -132,18 +136,18 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 			}
 		}
 
-		// left over in the current row, at the end
+		// left over 1 element in the current row, at the end
 		for (; j < FIL_COLS; ++j)
 		{
 			if (fil_bin_w[f][i][j] == 1)
 			{
-				conv_img1 += (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
-				conv_img2 += (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
+				conv_img1_rem += (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
+				conv_img2_rem += (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
 			}
 			else
 			{
-				conv_img1 -= (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
-				conv_img2 -= (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
+				conv_img1_rem -= (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
+				conv_img2_rem -= (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
 			}
 		}
 	}
@@ -152,27 +156,31 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 	conv_img2 = conv_val5 + conv_val6 + conv_val7 + conv_val8 + conv_img2_rem;
 
 
+	// left over row, at the end
 	for (; i < FIL_ROWS; ++i)
 	{
-		for (j=0 ; j < FIL_COLS; ++j)
+		for (j = 0; j < FIL_COLS; ++j)
 		{
 			if (fil_bin_w[f][i][j] == 1)
 			{
-				conv_img1 += (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
-				conv_img2 += (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
+				conv_img1_last += (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
+				conv_img2_last += (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
 			}
 			else
 			{
-				conv_img1 -= (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
-				conv_img2 -= (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
+				conv_img1_last -= (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
+				conv_img2_last -= (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
 			}
 		}
 	}
 
+	conv_img1 += conv_img1_last;
+	conv_img2 += conv_img2_last;
+
 	conv_img1 *= alphas[f];
 	conv_img2 *= alphas[f];
 
-	double bias = fil_b.data[offset(&fil_b, f, 0, 0, 0)];
+	
 
 	conv_img1 += bias;
 	conv_img2 += bias;
