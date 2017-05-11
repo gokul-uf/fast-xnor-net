@@ -310,12 +310,12 @@ void binary_net()
 
             cycles_count_start();
             bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
-
             // update weights and biases
             update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
             bp_soft_to_pool_cycles += cycles_count_stop();
 
+            cycles_count_start();
             bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
             bin_update_conv_weights(&fil_w, &fil_bin_w, alphas, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
             update_conv_biases(&fil_b, &del_conv, &conv_t);
@@ -505,14 +505,14 @@ double bin_validate(){
 
     int pred[1];
     int correct_preds = 0;
-    for (int i = num_train; i < num_train + num_val; ++i)
+    for (int i = num_train; i+1 < num_train + num_val; i=i+2)
         {
-            bin_convolution(&input_images, &conv_t, 1, fil_bin_w, alphas, fil_b, i, shuffle_index);
-            max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
-            feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
-            softmax(&fully_con_out, &softmax_out, pred, 1);
+            bin_convolution(&input_images, &conv_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index);
+            max_pooling(&conv_t, &pool_t, NULL, NULL, 2, 'V');
+            feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 2);
+            softmax(&fully_con_out, &softmax_out, pred, 2);
 
-            correct_preds += (labels[shuffle_index[i]] == pred[0]);
+            correct_preds += (labels[shuffle_index[i]] == pred[0]) + (labels[shuffle_index[i+1]] == pred[1]);
         }
 
     return (correct_preds*100.0) / num_val;

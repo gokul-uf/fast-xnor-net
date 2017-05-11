@@ -4,8 +4,8 @@ int N_ROWS_CONV;
 int N_COLS_CONV;
 
 void convolution(tensor* input_t, tensor* conv_t, int batch_size,
-	tensor* fil_w, tensor* fil_b, int base, int shuffle_index[]){
-
+	tensor* fil_w, tensor* fil_b, int base, int shuffle_index[])
+{
 	for (int b = 0; b < batch_size; ++b)
 	{
 		for (int f = 0; f < NUM_FILS; ++f)
@@ -23,8 +23,8 @@ void convolution(tensor* input_t, tensor* conv_t, int batch_size,
 }
 
 void bin_convolution(tensor* input_t, tensor* conv_t, int batch_size,
-	int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[]){
-
+	int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[])
+{
 	for (int b = 0; b < batch_size; b=b+2)
 	{
 		// load 2 current image
@@ -47,23 +47,23 @@ void bin_convolution(tensor* input_t, tensor* conv_t, int batch_size,
 }
 
 void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1, int cur_image2, 
-		int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int f){
-
+					int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int f)
+{
 	double conv_val1, conv_val2, conv_val3, conv_val4, conv_val5, conv_val6, conv_val7, conv_val8;
-	double conv_img1, conv_img2;
-	conv_val1 = 0;
-	conv_val2 = 0;
-	conv_val3 = 0;
-	conv_val4 = 0;
-	conv_val5 = 0;
-	conv_val6 = 0;
-	conv_val7 = 0;
-	conv_val8 = 0;
+	double conv_img1, conv_img2, conv_img1_rem = 0.0, conv_img2_rem = 0.0;
+	conv_val1 = 0.0;
+	conv_val2 = 0.0;
+	conv_val3 = 0.0;
+	conv_val4 = 0.0;
+	conv_val5 = 0.0;
+	conv_val6 = 0.0;
+	conv_val7 = 0.0;
+	conv_val8 = 0.0;
 
 	int i, j;
-	for (i = 0; i+1 < FIL_ROWS; i=i+2)
+	for (i = 0; i < FIL_ROWS; i=i+1)
 	{
-		for (j = 0; j+1 < FIL_COLS; j=j+2)
+		for (j = 0; j+1 < FIL_COLS; j=j+1)
 		{
 			double mat1, mat2, mat3, mat4;
 			mat1 = (t->data)[offset(t, cur_image1, c+j  ,   r+i, 0)];
@@ -111,7 +111,7 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 			{
 
 				conv_val3 += mat3;
-				conv_val7 -+ mat7;
+				conv_val7 += mat7;
 			}
 			else
 			{
@@ -131,16 +131,30 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 				conv_val8 -= mat8;
 			}
 		}
+
+		// left over in the current row, at the end
+		for (; j < FIL_COLS; ++j)
+		{
+			if (fil_bin_w[f][i][j] == 1)
+			{
+				conv_img1 += (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
+				conv_img2 += (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
+			}
+			else
+			{
+				conv_img1 -= (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
+				conv_img2 -= (t->data)[offset(t, cur_image2, c+j, r+i, 0)];
+			}
+		}
 	}
 
-	conv_img1 = conv_val1 + conv_val2 + conv_val3 + conv_val4;
-	conv_img2 = conv_val5 + conv_val6 + conv_val7 + conv_val8;
+	conv_img1 = conv_val1 + conv_val2 + conv_val3 + conv_val4 + conv_img1_rem;
+	conv_img2 = conv_val5 + conv_val6 + conv_val7 + conv_val8 + conv_img2_rem;
 
-	i=i-2;
-	j=j-2;
+
 	for (; i < FIL_ROWS; ++i)
 	{
-		for (; j < FIL_COLS; ++j)
+		for (j=0 ; j < FIL_COLS; ++j)
 		{
 			if (fil_bin_w[f][i][j] == 1)
 			{
@@ -174,13 +188,14 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 		conv_img2 = 0.0;
 	}
 
-	(conv_t->data)[offset(conv_t,b  ,j,i,f)] = conv_img1;
-	(conv_t->data)[offset(conv_t,b+1,j,i,f)] = conv_img2;
+	(conv_t->data)[offset(conv_t,b  ,c,r,f)] = conv_img1;
+	(conv_t->data)[offset(conv_t,b+1,c,r,f)] = conv_img2;
 }
 
 void xnor_convolution(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], 
 						tensor* conv_t, int batch_size, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
-						double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[]){
+						double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[])
+{
 	for (int b = 0; b < batch_size; ++b)
 	{
 		for (int f = 0; f < NUM_FILS; ++f)
@@ -198,7 +213,8 @@ void xnor_convolution(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], 
 	}
 }
 
-void initialize_filters(tensor* fil_w, tensor* fil_b) {
+void initialize_filters(tensor* fil_w, tensor* fil_b) 
+{
     srand(time(NULL));
 
     for(int k = 0; k < NUM_FILS; k++){
@@ -219,7 +235,8 @@ void initialize_filters(tensor* fil_w, tensor* fil_b) {
     }
 }
 
-void print_filters(tensor* fil_w, tensor* fil_b){
+void print_filters(tensor* fil_w, tensor* fil_b)
+{
 	for (int k = 0; k < NUM_FILS; ++k)
 	{
 		printf("k=%d, bias=%f\nweights:\n", k, (fil_b->data)[offset(fil_b, k, 0, 0, 0)]);
@@ -235,7 +252,8 @@ void print_filters(tensor* fil_w, tensor* fil_b){
 	}
 }
 
-void print_bin_filters(int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS]){
+void print_bin_filters(int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS])
+{
 	for (int k = 0; k < NUM_FILS; ++k)
 	{
 		printf("k=%d, alpha=%f\nweights:\n", k, alphas[k]);
@@ -252,7 +270,8 @@ void print_bin_filters(int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alpha
 }
 
 // Tested!!
-double convolve(tensor* t, int r, int c, int image_num, tensor* fil_w, tensor* fil_b, int f, int shuffle_index[]){
+double convolve(tensor* t, int r, int c, int image_num, tensor* fil_w, tensor* fil_b, int f, int shuffle_index[])
+{
 
 	double conv_val = 0.0;
 	for (int i = 0; i < FIL_ROWS; ++i)
@@ -278,8 +297,8 @@ double convolve(tensor* t, int r, int c, int image_num, tensor* fil_w, tensor* f
 
 double xnor_convolve(int t[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
 						int r, int c, int batch, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
-						double alphas[NUM_FILS], tensor fil_b, int f){
-
+						double alphas[NUM_FILS], tensor fil_b, int f)
+{
 	double conv_val = 0.0;
 	for (int i = 0; i < FIL_ROWS; ++i)
 	{

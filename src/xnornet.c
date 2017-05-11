@@ -5,8 +5,8 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 
 	for (int f = 0; f < NUM_FILS; ++f)
 	{
-		double sum1 = 0.0, sum2 = 0.0, sum3 = 0.0, sum4 = 0.0, sum; 
-		double abs_val1, abs_val2, abs_val3, abs_val4;
+		double sum1 = 0.0, sum2 = 0.0, sum3 = 0.0, sum4 = 0.0, sum_rem = 0.0, sum; 
+		double abs_val1, abs_val2, abs_val3, abs_val4, abs_val_rem;
 
 		int r, c;
 		
@@ -64,15 +64,32 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 				sum3 += abs_val3;
 				sum4 += abs_val4;
 			}
+
+			// left over in the current row, at the end
+			for (; c < FIL_COLS; ++c)
+			{
+				double mat_val = (fil_w->data)[offset(fil_w, f, c, r, 0)];
+
+				if (mat_val < 0.0)
+				{
+					abs_val_rem = -mat_val;
+					bin_fil_w[f][r][c] = -1;
+				}
+				else{
+					abs_val_rem = mat_val;
+					bin_fil_w[f][r][c] = 1;
+				}
+
+				sum_rem += abs_val_rem;
+			}
 		}
 
-		sum = sum1 + sum2 + sum3 + sum3;
+		sum = sum1 + sum2 + sum3 + sum4 + sum_rem;
 
-		r = r-2;
-		c = c-2;
+		// left over rows, in the end
 		for (; r < FIL_ROWS; ++r)
 		{
-			for (; c < FIL_COLS; ++c)
+			for (c = 0; c < FIL_COLS; ++c)
 			{
 				double mat_val = (fil_w->data)[offset(fil_w, f, c, r, 0)];
 
@@ -95,7 +112,8 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 }
 
 void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], int shuffle_index[], 
-					double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], int batch_size, int base){
+					double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], int batch_size, int base)
+{
 	int n = FIL_ROWS * FIL_COLS;
 
 	for (int b = 0; b < BATCH_SIZE; ++b)

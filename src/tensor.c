@@ -5,7 +5,7 @@ void build_args(tensor * t, int width, int height, int depth, int batch_size){
     t->height       = height;
     t->depth        = depth;
     t->batch_size   = batch_size;
-    t->data         = calloc(width * height * depth * batch_size, sizeof(double));
+    t->data         = calloc(batch_size * depth * height * width, sizeof(double));
 }
 
 void build_batch(tensor * t, int batch_size){
@@ -21,15 +21,17 @@ void destroy(tensor * t){
 }
 
 void reset_to_zero(tensor* t){
-    memset(t->data, 0, t->width * t->height * t->depth * t->batch_size * sizeof(double));
+    memset(t->data, 0, t->batch_size * t->depth* t->height * t->width * sizeof(double));
 }
 
+// width->col, height->row
+// order: batch, depth, height, width
 int offset( tensor * t, int b, int w, int h, int d ) {
     int width       = t->width;
     int height      = t->height;
     int depth       = t->depth;
     
-    return ( b * width * height * depth ) + ( w * height * depth ) + ( h * depth ) + d;
+    return ( b * depth * height * width ) + ( d * height * width ) + ( h * width ) + w;
 }
 
 void test_tensor()
