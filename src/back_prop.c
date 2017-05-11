@@ -7,6 +7,7 @@ int N_COLS_POOL;
 
 void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
 {
+	double multiplier = (LEARN_RATE/BATCH_SIZE);
 	for (int d = 0; d < N_DIGS; ++d)
 	{
 		for (int f = 0; f < NUM_FILS; ++f)
@@ -18,11 +19,11 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 					double delta_w = 0.0, delta = 0.0;
 					for (int b = 0; b < BATCH_SIZE; ++b)
 					{
-						delta = softmax_out->data[offset(softmax_out, b, 0, 0, d)] - (labels[shuffle_index[base+b]] == d);
-						delta_w += delta * pool_t->data[offset(pool_t, b, c, r, f)];
+						delta = (softmax_out->data)[offset(softmax_out, b, 0, 0, d)] - (labels[shuffle_index[base+b]] == d);
+						delta_w += delta * (pool_t->data)[offset(pool_t, b, c, r, f)];
 					}
 
-					(fully_con_w->data)[offset(fully_con_w, d, c, r, f)] -= (LEARN_RATE/BATCH_SIZE)*delta_w;
+					(fully_con_w->data)[offset(fully_con_w, d, c, r, f)] -= multiplier*delta_w;
 				}
 			}
 		}
@@ -31,19 +32,66 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 
 void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels, int base, int shuffle_index[])
 {
-	for (int d = 0; d < N_DIGS; ++d)
-	{
-		double delta_b = 0.0, delta = 0.0;
-		for (int b = 0; b < BATCH_SIZE; ++b)
-		{
-			delta = softmax_out->data[offset(softmax_out, b, 0, 0, d)] - (labels[shuffle_index[base+b]] == d);
-			delta_b += delta;
-		}
+	double multiplier = (LEARN_RATE/BATCH_SIZE);
+	double delta0=0, delta1=0, delta2=0, delta3=0, delta4=0, delta5=0, delta6=0, delta7=0, delta8=0, delta9=0;
+	double delta00=0, delta11=0, delta22=0, delta33=0, delta44=0, delta55=0, delta66=0, delta77=0, delta88=0, delta99=0;
 
-		(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, d)] -= (LEARN_RATE/BATCH_SIZE)*delta_b;
+	int true_label1, true_label2;
+
+	for (int b = 0; b < BATCH_SIZE; b=b+2)
+	{
+		true_label1 = labels[shuffle_index[base+b]];
+
+		delta0 += softmax_out->data[offset(softmax_out, b, 0, 0, 0)] - (true_label1 == 0);
+		delta1 += softmax_out->data[offset(softmax_out, b, 0, 0, 1)] - (true_label1 == 1);
+		delta2 += softmax_out->data[offset(softmax_out, b, 0, 0, 2)] - (true_label1 == 2);
+		delta3 += softmax_out->data[offset(softmax_out, b, 0, 0, 3)] - (true_label1 == 3);
+		delta4 += softmax_out->data[offset(softmax_out, b, 0, 0, 4)] - (true_label1 == 4);
+		delta5 += softmax_out->data[offset(softmax_out, b, 0, 0, 5)] - (true_label1 == 5);
+		delta6 += softmax_out->data[offset(softmax_out, b, 0, 0, 6)] - (true_label1 == 6);
+		delta7 += softmax_out->data[offset(softmax_out, b, 0, 0, 7)] - (true_label1 == 7);
+		delta8 += softmax_out->data[offset(softmax_out, b, 0, 0, 8)] - (true_label1 == 8);
+		delta9 += softmax_out->data[offset(softmax_out, b, 0, 0, 9)] - (true_label1 == 9);
+
+
+		true_label2 = labels[shuffle_index[base+b+1]];
+
+		delta00 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 0)] - (true_label2 == 0);
+		delta11 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 1)] - (true_label2 == 1);
+		delta22 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 2)] - (true_label2 == 2);
+		delta33 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 3)] - (true_label2 == 3);
+		delta44 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 4)] - (true_label2 == 4);
+		delta55 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 5)] - (true_label2 == 5);
+		delta66 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 6)] - (true_label2 == 6);
+		delta77 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 7)] - (true_label2 == 7);
+		delta88 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 8)] - (true_label2 == 8);
+		delta99 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 9)] - (true_label2 == 9);
 
 	}
+
+	delta0 += delta00;
+	delta1 += delta11;
+	delta2 += delta22;
+	delta3 += delta33;
+	delta4 += delta44;
+	delta5 += delta55;
+	delta6 += delta66;
+	delta7 += delta77;
+	delta8 += delta88;
+	delta9 += delta99;
+
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 0)] -= multiplier*delta0;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 1)] -= multiplier*delta1;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 2)] -= multiplier*delta2;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 3)] -= multiplier*delta3;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 4)] -= multiplier*delta4;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 5)] -= multiplier*delta5;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 6)] -= multiplier*delta6;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 7)] -= multiplier*delta7;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 8)] -= multiplier*delta8;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 9)] -= multiplier*delta9;
 }
+
 
 void bp_softmax_to_maxpool(tensor* del_max_pool, tensor* softmax_out, int* labels, int base, tensor* fully_con_w, int shuffle_index[])
 {
