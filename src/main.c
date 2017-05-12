@@ -65,7 +65,8 @@ int64_t forward_cycles = 0;
 int64_t backward_cycles = 0;
 int64_t total_cycles = 0;
 
-int main(){
+int main()
+{
     perf_init();
 
     printf("starting program\n");
@@ -80,8 +81,8 @@ int main(){
     /*printf("number_of_images=%d\n", NUM_IMAGES);
     printf("number_of_labels=%d\n", NUM_IMAGES);
     printf("n_rows in each image=%d\n", IMAGE_ROWS);
-    printf("n_cols in each image=%d\n\n", IMAGE_COLS);
-*/
+    printf("n_cols in each image=%d\n\n", IMAGE_COLS);*/
+
     //test_mnist_load(input_images, labels, NUM_IMAGES);
 
     // Now we have input layer as input_images. Next is convolution layer
@@ -309,17 +310,21 @@ void binary_net()
             soft_cycles += cycles_count_stop();
 
             cycles_count_start();
-            bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
+            bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index, 
+                                pool_index_i, pool_index_j);
+            //bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
             // update weights and biases
             update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
             bp_soft_to_pool_cycles += cycles_count_stop();
 
+            //cycles_count_start();
+            //bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
             cycles_count_start();
-            bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
+
             bin_update_conv_weights(&fil_w, &fil_bin_w, alphas, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
             update_conv_biases(&fil_b, &del_conv, &conv_t);
-            bp_pool_to_conv_cycles += cycles_count_stop();
+            bp_pool_to_conv_cycles = cycles_count_stop();
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
@@ -351,17 +356,17 @@ void binary_net()
         backward_cycles = bp_soft_to_pool_cycles + bp_pool_to_conv_cycles;
         total_cycles = forward_cycles + backward_cycles;
 
-        printf("epoch %d:\n", epoch+1);
-        printf("binarize_cycles: %lld\n", binarize_cycles);
-        printf("conv_cycles: %lld\n", conv_cycles);
-        printf("pool_cycles: %lld\n", pool_cycles);
-        printf("fully_cycles: %lld\n", fully_cycles);
-        printf("soft_cycles: %lld\n", soft_cycles);
+        printf("epoch                   %d:\n", epoch+1);
+        printf("binarize_cycles:        %lld\n", binarize_cycles);
+        printf("conv_cycles:            %lld\n", conv_cycles);
+        printf("pool_cycles:            %lld\n", pool_cycles);
+        printf("fully_cycles:           %lld\n", fully_cycles);
+        printf("soft_cycles:            %lld\n", soft_cycles);
         printf("bp_soft_to_pool_cycles: %lld\n", bp_soft_to_pool_cycles);
         printf("bp_pool_to_conv_cycles: %lld\n", bp_pool_to_conv_cycles);
-        printf("forward_cycles: %lld\n", forward_cycles);
-        printf("backward_cycles: %lld\n", backward_cycles);
-        printf("total_cycles: %lld\n", total_cycles);
+        printf("forward_cycles:         %lld\n", forward_cycles);
+        printf("backward_cycles:        %lld\n", backward_cycles);
+        printf("total_cycles:           %lld\n", total_cycles);
         printf("\n");
     }
 }
