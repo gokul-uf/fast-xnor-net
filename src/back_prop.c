@@ -9,26 +9,62 @@ double MULTIPLIER;
 
 void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
 {
-	for (int d = 0; d < N_DIGS; ++d)
+	double delta_w0, delta_w1, delta_w2, delta_w3, delta_w4, delta_w5, delta_w6, delta_w7, delta_w8, delta_w9;
+	double delta0, delta1, delta2, delta3, delta4, delta5, delta6, delta7, delta8, delta9;
+	double mat_val;
+	int true_label;
+
+	for (int f = 0; f < NUM_FILS; ++f)
 	{
-		for (int f = 0; f < NUM_FILS; ++f)
+		for (int r = 0; r < N_ROWS_POOL; ++r)
 		{
-			for (int r = 0; r < N_ROWS_POOL; ++r)
+			for (int c = 0; c < N_COLS_POOL; ++c)
 			{
-				for (int c = 0; c < N_COLS_POOL; ++c)
+				delta_w0 = 0.0, delta_w1 = 0.0, delta_w2 = 0.0, delta_w3 = 0.0, delta_w4 = 0.0, delta_w5 = 0.0,
+				delta_w6 = 0.0, delta_w7 = 0.0, delta_w8 = 0.0, delta_w9 = 0.0;
+				for (int b = 0; b < BATCH_SIZE; ++b)
 				{
-					double delta_w = 0.0, delta = 0.0;
-					for (int b = 0; b < BATCH_SIZE; ++b)
-					{
-						INCREMENT_FLOPS(3)
+					INCREMENT_FLOPS(30)
 
-						delta = (softmax_out->data)[offset(softmax_out, b, 0, 0, d)] - (labels[shuffle_index[base+b]] == d);
-						delta_w += delta * (pool_t->data)[offset(pool_t, b, c, r, f)];
-					}
+					// unroll inner loop completely for number of digits
 
-					INCREMENT_FLOPS(2)
-					(fully_con_w->data)[offset(fully_con_w, d, c, r, f)] -= MULTIPLIER*delta_w;
+					mat_val = (pool_t->data)[offset(pool_t, b, c, r, f)];
+					true_label = labels[shuffle_index[base+b]];
+
+					delta0 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 0)] - (true_label == 0);
+					delta1 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 1)] - (true_label == 1);
+					delta2 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 2)] - (true_label == 2);
+					delta3 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 3)] - (true_label == 3);
+					delta4 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 4)] - (true_label == 4);
+					delta5 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 5)] - (true_label == 5);
+					delta6 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 6)] - (true_label == 6);
+					delta7 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 7)] - (true_label == 7);
+					delta8 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 8)] - (true_label == 8);
+					delta9 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 9)] - (true_label == 9);
+
+					delta_w0 += delta0 * mat_val;
+					delta_w1 += delta1 * mat_val;
+					delta_w2 += delta2 * mat_val;
+					delta_w3 += delta3 * mat_val;
+					delta_w4 += delta4 * mat_val;
+					delta_w5 += delta5 * mat_val;
+					delta_w6 += delta6 * mat_val;
+					delta_w7 += delta7 * mat_val;
+					delta_w8 += delta8 * mat_val;
+					delta_w9 += delta9 * mat_val;
 				}
+
+				INCREMENT_FLOPS(20)
+				(fully_con_w->data)[offset(fully_con_w, 0, c, r, f)] -= MULTIPLIER*delta_w0;
+				(fully_con_w->data)[offset(fully_con_w, 1, c, r, f)] -= MULTIPLIER*delta_w1;
+				(fully_con_w->data)[offset(fully_con_w, 2, c, r, f)] -= MULTIPLIER*delta_w2;
+				(fully_con_w->data)[offset(fully_con_w, 3, c, r, f)] -= MULTIPLIER*delta_w3;
+				(fully_con_w->data)[offset(fully_con_w, 4, c, r, f)] -= MULTIPLIER*delta_w4;
+				(fully_con_w->data)[offset(fully_con_w, 5, c, r, f)] -= MULTIPLIER*delta_w5;
+				(fully_con_w->data)[offset(fully_con_w, 6, c, r, f)] -= MULTIPLIER*delta_w6;
+				(fully_con_w->data)[offset(fully_con_w, 7, c, r, f)] -= MULTIPLIER*delta_w7;
+				(fully_con_w->data)[offset(fully_con_w, 8, c, r, f)] -= MULTIPLIER*delta_w8;
+				(fully_con_w->data)[offset(fully_con_w, 9, c, r, f)] -= MULTIPLIER*delta_w9;
 			}
 		}
 	}
