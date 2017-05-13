@@ -2,6 +2,7 @@
 
 int N_ROWS_POOL;
 int N_COLS_POOL;
+int TOTAL_FLOPS;
 
 void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, tensor* fully_con_b, int batch_size){
 
@@ -17,6 +18,8 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 				{
 					for (int j = 0; j < N_COLS_POOL; ++j)
 					{
+						INCREMENT_FLOPS(2)
+
 						sum += (pool_t->data)[offset(pool_t, b, j, i, f)] * (fully_con_w->data)[offset(fully_con_w, d, j, i, f)];
 					}
 				
@@ -34,6 +37,8 @@ void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[], int batch_
 		double max = -99999.0, max_index = -1;
 		for (int d = 0; d < N_DIGS; ++d)
 		{
+			INCREMENT_FLOPS(1)
+
 			if ((fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)] > max)
 			{
 				max = (fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)];
@@ -46,11 +51,15 @@ void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[], int batch_
 		double exp_sum = 0.0;
 		for (int d = 0; d < N_DIGS; ++d)
 		{
+			INCREMENT_FLOPS(3)
+
 			exp_sum += exp( (fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)] - max );
 		}
 
 		for (int d = 0; d < N_DIGS; ++d)
 		{
+			INCREMENT_FLOPS(4)
+
 			(softmax_out->data)[offset(softmax_out, b, 0, 0, d)] = exp(
 																	(fully_con_out->data)[offset(fully_con_out, b, 0, 0, d)] - max
 																	- log( exp_sum )

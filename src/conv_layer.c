@@ -2,6 +2,7 @@
 
 int N_ROWS_CONV;
 int N_COLS_CONV;
+int TOTAL_FLOPS;
 
 void convolution(tensor* input_t, tensor* conv_t, int batch_size,
 	tensor* fil_w, tensor* fil_b, int base, int shuffle_index[])
@@ -72,6 +73,8 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 	{
 		for (j = 0; j+1 < FIL_COLS; j=j+2)
 		{
+			INCREMENT_FLOPS(8)
+
 			mat1 = (t->data)[offset(t, cur_image1, c+j  ,   r+i, 0)];
 			mat2 = (t->data)[offset(t, cur_image1, c+j+1,   r+i, 0)];
 			mat3 = (t->data)[offset(t, cur_image1, c+j,   r+i+1, 0)];
@@ -139,6 +142,8 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 		// left over 1 element in the current row, at the end
 		for (; j < FIL_COLS; ++j)
 		{
+			INCREMENT_FLOPS(2)
+
 			if (fil_bin_w[f][i][j] == 1)
 			{
 				conv_img1_rem += (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
@@ -152,6 +157,7 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 		}
 	}
 
+	INCREMENT_FLOPS(8)
 	conv_img1 = conv_val1 + conv_val2 + conv_val3 + conv_val4 + conv_img1_rem;
 	conv_img2 = conv_val5 + conv_val6 + conv_val7 + conv_val8 + conv_img2_rem;
 
@@ -161,6 +167,8 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 	{
 		for (j = 0; j < FIL_COLS; ++j)
 		{
+			INCREMENT_FLOPS(2)
+
 			if (fil_bin_w[f][i][j] == 1)
 			{
 				conv_img1_last += (t->data)[offset(t, cur_image1, c+j, r+i, 0)];
@@ -174,6 +182,7 @@ void bin_convolve(tensor* t, tensor* conv_t, int b, int r, int c, int cur_image1
 		}
 	}
 
+	INCREMENT_FLOPS(10)
 	conv_img1 += conv_img1_last;
 	conv_img2 += conv_img2_last;
 

@@ -4,10 +4,11 @@ int N_ROWS_CONV;
 int N_COLS_CONV;
 int N_ROWS_POOL;
 int N_COLS_POOL;
+int TOTAL_FLOPS;
+double MULTIPLIER;
 
 void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
 {
-	double multiplier = (LEARN_RATE/BATCH_SIZE);
 	for (int d = 0; d < N_DIGS; ++d)
 	{
 		for (int f = 0; f < NUM_FILS; ++f)
@@ -19,11 +20,14 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 					double delta_w = 0.0, delta = 0.0;
 					for (int b = 0; b < BATCH_SIZE; ++b)
 					{
+						INCREMENT_FLOPS(3)
+
 						delta = (softmax_out->data)[offset(softmax_out, b, 0, 0, d)] - (labels[shuffle_index[base+b]] == d);
 						delta_w += delta * (pool_t->data)[offset(pool_t, b, c, r, f)];
 					}
 
-					(fully_con_w->data)[offset(fully_con_w, d, c, r, f)] -= multiplier*delta_w;
+					INCREMENT_FLOPS(2)
+					(fully_con_w->data)[offset(fully_con_w, d, c, r, f)] -= MULTIPLIER*delta_w;
 				}
 			}
 		}
@@ -32,7 +36,6 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 
 void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels, int base, int shuffle_index[])
 {
-	double multiplier = (LEARN_RATE/BATCH_SIZE);
 	double delta0=0, delta1=0, delta2=0, delta3=0, delta4=0, delta5=0, delta6=0, delta7=0, delta8=0, delta9=0;
 	double delta00=0, delta11=0, delta22=0, delta33=0, delta44=0, delta55=0, delta66=0, delta77=0, delta88=0, delta99=0;
 
@@ -40,6 +43,8 @@ void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels,
 
 	for (int b = 0; b < BATCH_SIZE; b=b+2)
 	{
+		INCREMENT_FLOPS(40)
+
 		true_label1 = labels[shuffle_index[base+b]];
 
 		delta0 += softmax_out->data[offset(softmax_out, b, 0, 0, 0)] - (true_label1 == 0);
@@ -69,6 +74,7 @@ void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels,
 
 	}
 
+	INCREMENT_FLOPS(30)
 	delta0 += delta00;
 	delta1 += delta11;
 	delta2 += delta22;
@@ -80,16 +86,16 @@ void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels,
 	delta8 += delta88;
 	delta9 += delta99;
 
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 0)] -= multiplier*delta0;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 1)] -= multiplier*delta1;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 2)] -= multiplier*delta2;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 3)] -= multiplier*delta3;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 4)] -= multiplier*delta4;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 5)] -= multiplier*delta5;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 6)] -= multiplier*delta6;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 7)] -= multiplier*delta7;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 8)] -= multiplier*delta8;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 9)] -= multiplier*delta9;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 0)] -= MULTIPLIER*delta0;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 1)] -= MULTIPLIER*delta1;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 2)] -= MULTIPLIER*delta2;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 3)] -= MULTIPLIER*delta3;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 4)] -= MULTIPLIER*delta4;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 5)] -= MULTIPLIER*delta5;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 6)] -= MULTIPLIER*delta6;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 7)] -= MULTIPLIER*delta7;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 8)] -= MULTIPLIER*delta8;
+	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 9)] -= MULTIPLIER*delta9;
 }
 
 void bp_softmax_to_maxpool(tensor* del_max_pool, tensor* softmax_out, int* labels, int base, tensor* fully_con_w, int shuffle_index[])
@@ -208,6 +214,7 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 			{
 				for (int c = 0; c < N_COLS_POOL; ++c)
 				{
+					INCREMENT_FLOPS(30)
 					// Unrolling the inner loop on digits completely
 
 					delta0 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 0)] - (cur_label == 0);
@@ -306,8 +313,8 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
 								tensor* input_images, int base, int shuffle_index[])
 {
+	INCREMENT_FLOPS(2)
 	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
-	double multiplier = (LEARN_RATE/BATCH_SIZE);
 	double delta_w;
 	int cur_image;
 
@@ -328,6 +335,8 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 		    			{
 		    				for (int j = 0; j < N_COLS_CONV; ++j)
 		    				{
+		    					INCREMENT_FLOPS(3)
+
 		    					if( (conv_t->data)[offset(conv_t, b, j  , i, f)] > 0.0 )
 		    					{
 		    						delta_w += (del_conv->data)[offset(del_conv, b, j, i, f)]*
@@ -337,18 +346,19 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 		    			}
 				    }
 
+				    INCREMENT_FLOPS(7)
 				    // modifying delta_w to account for sign function applied on weights
 				    double weight = (fil_w->data)[offset(fil_w, f, r, c, d)];
 				    if (weight <= 1 && weight >= -1)
 				    {
-				    	delta_w *= ( (alphas[f]*weight) +  recip_n);
+				    	delta_w *= ( (alphas[f]*weight) +  recip_n );
 				    }
 				    else
 			    	{
 			    		delta_w *= recip_n;
 			    	}
 				    
-				    (fil_w->data)[offset(fil_w, f, r, c, d)] = weight - multiplier*delta_w;
+				    (fil_w->data)[offset(fil_w, f, r, c, d)] = weight - MULTIPLIER*delta_w;
                 }
 			}
 		}
@@ -357,7 +367,6 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 
 void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 {
-	double multiplier = (LEARN_RATE/BATCH_SIZE);
 	double delta_b;
 
 	for (int f = 0; f < NUM_FILS; ++f)
@@ -370,6 +379,8 @@ void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 			{
 				for (int j = 0; j < N_COLS_CONV; j=j+4)
 				{
+					INCREMENT_FLOPS(2)
+
 					if(conv_t->data[offset(conv_t, b, j, i, f)] > 0.0){
 						delta_b	+= del_conv->data[offset(del_conv, b, j, i, f)];
 					}
@@ -377,6 +388,7 @@ void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 			}
 		}
 
-		(fil_b->data)[offset(fil_b, f, 0, 0, 0)] -= multiplier*delta_b;
+		INCREMENT_FLOPS(2)
+		(fil_b->data)[offset(fil_b, f, 0, 0, 0)] -= MULTIPLIER*delta_b;
 	}
 }

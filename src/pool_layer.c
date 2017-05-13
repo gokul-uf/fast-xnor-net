@@ -2,6 +2,7 @@
 
 int N_ROWS_POOL;
 int N_COLS_POOL;
+int TOTAL_FLOPS;
 
 void max_pooling(tensor* conv_t, tensor* pool_t, int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], 
 	int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int batch_size, char mode){
@@ -18,6 +19,8 @@ void max_pooling(tensor* conv_t, tensor* pool_t, int pool_index_i[][NUM_FILS][N_
 
 				for (int j = 0, pool_j = 0; j < N_COLS_CONV; j=j+2, ++pool_j)
 				{
+					INCREMENT_FLOPS(4)
+
 					double max = 0.0;
 					int max_i = i, max_j = j;
 

@@ -1,5 +1,7 @@
 #include "xnornet.h"
 
+int TOTAL_FLOPS;
+
 void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[]){
 	int n = FIL_ROWS * FIL_COLS;
 
@@ -14,6 +16,8 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 		{
 			for (c = 0; c+1 < FIL_COLS; c=c+2)
 			{
+				INCREMENT_FLOPS(12)
+
 				double mat_val_1 = (fil_w->data)[offset(fil_w, f, c  , r  , 0)];
 				double mat_val_2 = (fil_w->data)[offset(fil_w, f, c+1, r  , 0)];
 				double mat_val_3 = (fil_w->data)[offset(fil_w, f, c  , r+1, 0)];
@@ -68,6 +72,8 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 			// left over in the current row, at the end
 			for (; c < FIL_COLS; ++c)
 			{
+				INCREMENT_FLOPS(3)
+
 				double mat_val = (fil_w->data)[offset(fil_w, f, c, r, 0)];
 
 				if (mat_val < 0.0)
@@ -84,6 +90,7 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 			}
 		}
 
+		INCREMENT_FLOPS(4)
 		sum = sum1 + sum2 + sum3 + sum4 + sum_rem;
 
 		// left over rows, in the end
@@ -91,6 +98,8 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 		{
 			for (c = 0; c < FIL_COLS; ++c)
 			{
+				INCREMENT_FLOPS(3)
+
 				double mat_val = (fil_w->data)[offset(fil_w, f, c, r, 0)];
 
 				if (mat_val < 0.0)
@@ -107,6 +116,7 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 			}
 		}
 
+		INCREMENT_FLOPS(1)
 		alphas[f] = sum/n;
 	}
 }
