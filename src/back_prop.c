@@ -346,7 +346,7 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 	}
 }
 
-void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+/*void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
 								tensor* input_images, int base, int shuffle_index[])
 {
 	INCREMENT_FLOPS(2)
@@ -397,6 +397,423 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 				    (fil_w->data)[offset(fil_w, f, r, c, d)] = weight - MULTIPLIER*delta_w;
                 }
 			}
+		}
+	}
+}*/
+
+void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+								tensor* input_images, int base, int shuffle_index[])
+{
+	INCREMENT_FLOPS(2)
+	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
+	double input_pixel0, input_pixel1, input_pixel2, input_pixel3;
+	double conv_val0, conv_val1, conv_val2;
+	double del_conv0, del_conv1, del_conv2;
+	int cur_image;
+
+	double weight_r0c0f0, weight_r0c0f1, weight_r0c0f2;
+	double weight_r0c1f0, weight_r0c1f1, weight_r0c1f2;
+	double weight_r1c0f0, weight_r1c0f1, weight_r1c0f2;
+	double weight_r1c1f0, weight_r1c1f1, weight_r1c1f2;
+
+	double delta_w_r0c0f0, delta_w_r0c0f1, delta_w_r0c0f2;
+    double delta_w_r0c1f0, delta_w_r0c1f1, delta_w_r0c1f2;
+    double delta_w_r1c0f0, delta_w_r1c0f1, delta_w_r1c0f2;
+    double delta_w_r1c1f0, delta_w_r1c1f1, delta_w_r1c1f2;
+
+
+    // declaration for the leftover part, at the end
+    double delta_w0, delta_w1, delta_w2;
+    double input_pixel;
+    double weight0, weight1, weight2;
+
+
+    int r=0, c=0;
+	//unroll outer loop on number of filters
+	for (r = 0; r+1 < FIL_ROWS; r=r+2)
+	{
+		for (c = 0; c+1 < FIL_COLS; c=c+2)
+		{
+		    delta_w_r0c0f0 = 0.0, delta_w_r0c0f1 = 0.0, delta_w_r0c0f2 = 0.0;
+		    delta_w_r0c1f0 = 0.0, delta_w_r0c1f1 = 0.0, delta_w_r0c1f2 = 0.0;
+		    delta_w_r1c0f0 = 0.0, delta_w_r1c0f1 = 0.0, delta_w_r1c0f2 = 0.0;
+		    delta_w_r1c1f0 = 0.0, delta_w_r1c1f1 = 0.0, delta_w_r1c1f2 = 0.0;
+
+		    for (int b = 0; b < BATCH_SIZE; ++b)
+		    {
+		    	cur_image = shuffle_index[b+base];
+
+    			for (int i = 0; i < N_ROWS_CONV; ++i)
+    			{
+
+    				for (int j = 0; j < N_COLS_CONV; ++j)
+    				{
+
+    					INCREMENT_FLOPS(27)
+
+    					// one for each r and c, for the unrolling
+    					input_pixel0 = (input_images->data)[offset(input_images, cur_image, j+c  , i+r  , 0)];
+    					input_pixel1 = (input_images->data)[offset(input_images, cur_image, j+c+1, i+r  , 0)];
+    					input_pixel2 = (input_images->data)[offset(input_images, cur_image, j+c  , i+r+1, 0)];
+    					input_pixel3 = (input_images->data)[offset(input_images, cur_image, j+c+1, i+r+1, 0)];
+
+    					// one for each filter
+    					conv_val0 = (conv_t->data)[offset(conv_t, b, j, i, 0)];
+    					conv_val1 = (conv_t->data)[offset(conv_t, b, j, i, 1)];
+    					conv_val2 = (conv_t->data)[offset(conv_t, b, j, i, 2)];
+
+    					// one for each filter
+    					del_conv0 = (del_conv->data)[offset(del_conv, b, j, i, 0)];
+    					del_conv1 = (del_conv->data)[offset(del_conv, b, j, i, 1)];
+    					del_conv2 = (del_conv->data)[offset(del_conv, b, j, i, 2)];
+    					
+    					// filter 1
+    					if( conv_val0 > 0.0 )
+    					{
+    						delta_w_r0c0f0 += del_conv0*input_pixel0;
+    						delta_w_r0c1f0 += del_conv0*input_pixel1;
+    						delta_w_r1c0f0 += del_conv0*input_pixel2;
+    						delta_w_r1c1f0 += del_conv0*input_pixel3;
+    					}
+
+    					// filter 2
+    					if( conv_val1 > 0.0 )
+    					{
+    						delta_w_r0c0f1 += del_conv1*input_pixel0;
+    						delta_w_r0c1f1 += del_conv1*input_pixel1;
+    						delta_w_r1c0f1 += del_conv1*input_pixel2;
+    						delta_w_r1c1f1 += del_conv1*input_pixel3;
+    					}
+
+    					// filter 3
+    					if( conv_val2 > 0.0 )
+    					{
+    						delta_w_r0c0f2 += del_conv2*input_pixel0;
+    						delta_w_r0c1f2 += del_conv2*input_pixel1;
+    						delta_w_r1c0f2 += del_conv2*input_pixel2;
+    						delta_w_r1c1f2 += del_conv2*input_pixel3;
+    					}
+    				}
+    			}
+		    }
+
+		    INCREMENT_FLOPS(60)
+
+		    // modifying delta_w to account for sign function applied on weights
+		    weight_r0c0f0 = (fil_w->data)[offset(fil_w, 0, r, c, 0)];
+		    weight_r0c0f1 = (fil_w->data)[offset(fil_w, 1, r, c, 0)];
+		    weight_r0c0f2 = (fil_w->data)[offset(fil_w, 2, r, c, 0)];
+
+		    weight_r0c1f0 = (fil_w->data)[offset(fil_w, 0, r, c+1, 0)];
+		    weight_r0c1f1 = (fil_w->data)[offset(fil_w, 1, r, c+1, 0)];
+		    weight_r0c1f2 = (fil_w->data)[offset(fil_w, 2, r, c+1, 0)];
+
+		    weight_r1c0f0 = (fil_w->data)[offset(fil_w, 0, r+1, c, 0)];
+		    weight_r1c0f1 = (fil_w->data)[offset(fil_w, 1, r+1, c, 0)];
+		    weight_r1c0f2 = (fil_w->data)[offset(fil_w, 2, r+1, c, 0)];
+
+		    weight_r1c1f0 = (fil_w->data)[offset(fil_w, 0, r+1, c+1, 0)];
+		    weight_r1c1f1 = (fil_w->data)[offset(fil_w, 1, r+1, c+1, 0)];
+		    weight_r1c1f2 = (fil_w->data)[offset(fil_w, 2, r+1, c+1, 0)];
+
+		    // filter 1
+		    if (weight_r0c0f0 <= 1.0 && weight_r0c0f0 >= -1.0)
+		    {
+		    	delta_w_r0c0f0 *= ( (alphas[0]*weight_r0c0f0) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r0c0f0 *= recip_n;
+	    	}
+
+	    	if (weight_r0c1f0 <= 1.0 && weight_r0c1f0 >= -1.0)
+		    {
+		    	delta_w_r0c1f0 *= ( (alphas[0]*weight_r0c1f0) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r0c1f0 *= recip_n;
+	    	}
+
+	    	if (weight_r1c0f0 <= 1.0 && weight_r1c0f0 >= -1.0)
+		    {
+		    	delta_w_r1c0f0 *= ( (alphas[0]*weight_r1c0f0) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r1c0f0 *= recip_n;
+	    	}
+
+	    	if (weight_r1c1f0 <= 1.0 && weight_r1c1f0 >= -1.0)
+		    {
+		    	delta_w_r1c1f0 *= ( (alphas[0]*weight_r1c1f0) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r1c1f0 *= recip_n;
+	    	}
+
+	    	// filter 2
+	    	if (weight_r0c0f1 <= 1.0 && weight_r0c0f1 >= -1.0)
+		    {
+		    	delta_w_r0c0f1 *= ( (alphas[1]*weight_r0c0f1) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r0c0f1 *= recip_n;
+	    	}
+
+	    	if (weight_r0c1f1 <= 1.0 && weight_r0c1f1 >= -1.0)
+		    {
+		    	delta_w_r0c1f1 *= ( (alphas[1]*weight_r0c1f1) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r0c1f1 *= recip_n;
+	    	}
+
+	    	if (weight_r1c0f1 <= 1.0 && weight_r1c0f1 >= -1.0)
+		    {
+		    	delta_w_r1c0f1 *= ( (alphas[1]*weight_r1c0f1) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r1c0f1 *= recip_n;
+	    	}
+
+	    	if (weight_r1c1f1 <= 1.0 && weight_r1c1f1 >= -1.0)
+		    {
+		    	delta_w_r1c1f1 *= ( (alphas[1]*weight_r1c1f1) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r1c1f1 *= recip_n;
+	    	}
+
+	    	// filter 3
+	    	if (weight_r0c0f2 <= 1.0 && weight_r0c0f2 >= -1.0)
+		    {
+		    	delta_w_r0c0f2 *= ( (alphas[2]*weight_r0c0f2) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r0c0f2 *= recip_n;
+	    	}
+
+	    	if (weight_r0c1f2 <= 1.0 && weight_r0c1f2 >= -1.0)
+		    {
+		    	delta_w_r0c1f2 *= ( (alphas[2]*weight_r0c1f2) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r0c1f2 *= recip_n;
+	    	}
+
+	    	if (weight_r1c0f2 <= 1.0 && weight_r1c0f2 >= -1.0)
+		    {
+		    	delta_w_r1c0f2 *= ( (alphas[2]*weight_r1c0f2) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r1c0f2 *= recip_n;
+	    	}
+
+	    	if (weight_r1c1f2 <= 1.0 && weight_r1c1f2 >= -1.0)
+		    {
+		    	delta_w_r1c1f2 *= ( (alphas[2]*weight_r1c1f2) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w_r1c1f2 *= recip_n;
+	    	}
+		    
+	    	INCREMENT_FLOPS(24)
+
+		    (fil_w->data)[offset(fil_w, 0, r, c, 0)] = weight_r0c0f0 - MULTIPLIER*delta_w_r0c0f0;
+		    (fil_w->data)[offset(fil_w, 1, r, c, 0)] = weight_r0c0f1 - MULTIPLIER*delta_w_r0c0f1;
+		    (fil_w->data)[offset(fil_w, 2, r, c, 0)] = weight_r0c0f2 - MULTIPLIER*delta_w_r0c0f2;
+
+		    (fil_w->data)[offset(fil_w, 0, r, c+1, 0)] = weight_r0c1f0 - MULTIPLIER*delta_w_r0c1f0;
+		    (fil_w->data)[offset(fil_w, 1, r, c+1, 0)] = weight_r0c1f1 - MULTIPLIER*delta_w_r0c1f1;
+		    (fil_w->data)[offset(fil_w, 2, r, c+1, 0)] = weight_r0c1f2 - MULTIPLIER*delta_w_r0c1f2;
+
+		    (fil_w->data)[offset(fil_w, 0, r+1, c, 0)] = weight_r1c0f0 - MULTIPLIER*delta_w_r1c0f0;
+		    (fil_w->data)[offset(fil_w, 1, r+1, c, 0)] = weight_r1c0f1 - MULTIPLIER*delta_w_r1c0f1;
+		    (fil_w->data)[offset(fil_w, 2, r+1, c, 0)] = weight_r1c0f2 - MULTIPLIER*delta_w_r1c0f2;
+
+		    (fil_w->data)[offset(fil_w, 0, r+1, c+1, 0)] = weight_r1c1f0 - MULTIPLIER*delta_w_r1c1f0;
+		    (fil_w->data)[offset(fil_w, 1, r+1, c+1, 0)] = weight_r1c1f1 - MULTIPLIER*delta_w_r1c1f1;
+		    (fil_w->data)[offset(fil_w, 2, r+1, c+1, 0)] = weight_r1c1f2 - MULTIPLIER*delta_w_r1c1f2;
+		}
+
+		// for the left over element in the current row, at the end
+		for (; c < FIL_COLS; ++c)
+		{
+		    delta_w0 = 0.0, delta_w1 = 0.0, delta_w2 = 0.0;
+
+		    for (int b = 0; b < BATCH_SIZE; ++b)
+		    {
+		    	cur_image = shuffle_index[b+base];
+
+    			for (int i = 0; i < N_ROWS_CONV; ++i)
+    			{
+
+    				for (int j = 0; j < N_COLS_CONV; ++j)
+    				{
+
+    					INCREMENT_FLOPS(9)
+
+    					input_pixel = (input_images->data)[offset(input_images, cur_image, j+c, i+r, 0)];
+
+    					conv_val0 = (conv_t->data)[offset(conv_t, b, j, i, 0)];
+    					conv_val1 = (conv_t->data)[offset(conv_t, b, j, i, 1)];
+    					conv_val2 = (conv_t->data)[offset(conv_t, b, j, i, 2)];
+
+    					del_conv0 = (del_conv->data)[offset(del_conv, b, j, i, 0)];
+    					del_conv1 = (del_conv->data)[offset(del_conv, b, j, i, 1)];
+    					del_conv2 = (del_conv->data)[offset(del_conv, b, j, i, 2)];
+    					
+    					if( conv_val0 > 0.0 )
+    					{
+    						delta_w0 += del_conv0*input_pixel;
+    					}
+
+    					if( conv_val1 > 0.0 )
+    					{
+    						delta_w1 += del_conv1*input_pixel;
+    					}
+
+    					if( conv_val2 > 0.0 )
+    					{
+    						delta_w2 += del_conv2*input_pixel;
+    					}
+    				}
+    			}
+		    }
+
+		    INCREMENT_FLOPS(21)
+		    // modifying delta_w to account for sign function applied on weights
+		    weight0 = (fil_w->data)[offset(fil_w, 0, r, c, 0)];
+		    weight1 = (fil_w->data)[offset(fil_w, 1, r, c, 0)];
+		    weight2 = (fil_w->data)[offset(fil_w, 2, r, c, 0)];
+
+		    if (weight0 <= 1 && weight0 >= -1)
+		    {
+		    	delta_w0 *= ( (alphas[0]*weight0) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w0 *= recip_n;
+	    	}
+
+	    	if (weight1 <= 1 && weight1 >= -1)
+		    {
+		    	delta_w1 *= ( (alphas[1]*weight1) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w1 *= recip_n;
+	    	}
+
+	    	if (weight2 <= 1 && weight2 >= -1)
+		    {
+		    	delta_w2 *= ( (alphas[2]*weight2) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w2 *= recip_n;
+	    	}
+		    
+		    (fil_w->data)[offset(fil_w, 0, r, c, 0)] = weight0 - MULTIPLIER*delta_w0;
+		    (fil_w->data)[offset(fil_w, 1, r, c, 0)] = weight1 - MULTIPLIER*delta_w1;
+		    (fil_w->data)[offset(fil_w, 2, r, c, 0)] = weight2 - MULTIPLIER*delta_w2;
+		}
+	}
+
+
+	// for the leftover row, at the end
+	for (; r < FIL_ROWS; ++r)
+	{
+		for (c=0; c < FIL_COLS; ++c)
+		{
+		    delta_w0 = 0.0, delta_w1 = 0.0, delta_w2 = 0.0;
+
+		    for (int b = 0; b < BATCH_SIZE; ++b)
+		    {
+		    	cur_image = shuffle_index[b+base];
+
+    			for (int i = 0; i < N_ROWS_CONV; ++i)
+    			{
+
+    				for (int j = 0; j < N_COLS_CONV; ++j)
+    				{
+
+    					INCREMENT_FLOPS(9)
+
+    					input_pixel = (input_images->data)[offset(input_images, cur_image, j+c, i+r, 0)];
+
+    					conv_val0 = (conv_t->data)[offset(conv_t, b, j, i, 0)];
+    					conv_val1 = (conv_t->data)[offset(conv_t, b, j, i, 1)];
+    					conv_val2 = (conv_t->data)[offset(conv_t, b, j, i, 2)];
+
+    					del_conv0 = (del_conv->data)[offset(del_conv, b, j, i, 0)];
+    					del_conv1 = (del_conv->data)[offset(del_conv, b, j, i, 1)];
+    					del_conv2 = (del_conv->data)[offset(del_conv, b, j, i, 2)];
+    					
+    					if( conv_val0 > 0.0 )
+    					{
+    						delta_w0 += del_conv0*input_pixel;
+    					}
+
+    					if( conv_val1 > 0.0 )
+    					{
+    						delta_w1 += del_conv1*input_pixel;
+    					}
+
+    					if( conv_val2 > 0.0 )
+    					{
+    						delta_w2 += del_conv2*input_pixel;
+    					}
+    				}
+    			}
+		    }
+
+		    INCREMENT_FLOPS(21)
+		    // modifying delta_w to account for sign function applied on weights
+		    weight0 = (fil_w->data)[offset(fil_w, 0, r, c, 0)];
+		    weight1 = (fil_w->data)[offset(fil_w, 1, r, c, 0)];
+		    weight2 = (fil_w->data)[offset(fil_w, 2, r, c, 0)];
+
+		    if (weight0 <= 1 && weight0 >= -1)
+		    {
+		    	delta_w0 *= ( (alphas[0]*weight0) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w0 *= recip_n;
+	    	}
+
+	    	if (weight1 <= 1 && weight1 >= -1)
+		    {
+		    	delta_w1 *= ( (alphas[1]*weight1) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w1 *= recip_n;
+	    	}
+
+	    	if (weight2 <= 1 && weight2 >= -1)
+		    {
+		    	delta_w2 *= ( (alphas[2]*weight2) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_w2 *= recip_n;
+	    	}
+		    
+		    (fil_w->data)[offset(fil_w, 0, r, c, 0)] = weight0 - MULTIPLIER*delta_w0;
+		    (fil_w->data)[offset(fil_w, 1, r, c, 0)] = weight1 - MULTIPLIER*delta_w1;
+		    (fil_w->data)[offset(fil_w, 2, r, c, 0)] = weight2 - MULTIPLIER*delta_w2;
 		}
 	}
 }
