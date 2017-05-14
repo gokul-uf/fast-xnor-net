@@ -820,8 +820,8 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 }*/
 
 // unroll conv rows and cols
-void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
-								tensor* input_images, int base, int shuffle_index[])
+void bin_update_conv_ws_bs(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* fil_b, tensor* del_conv, 
+	tensor* conv_t, tensor* input_images, int base, int shuffle_index[])
 {
 	INCREMENT_FLOPS(2)
 	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
@@ -870,6 +870,8 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	double weight_f0;
 	double weight_f1;
 	double weight_f2;
+
+	double delta_b0 = 0.0, delta_b1 = 0.0, delta_b2 = 0.0;
 
 	double delta_ws[NUM_FILS][FIL_ROWS][FIL_COLS];
 
@@ -1000,6 +1002,62 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 						
 					}
 				}
+
+				// ------------------------------------update biases------------------------------------
+				INCREMENT_FLOPS(24)
+
+
+				// ------------------------------------filter 0-------------------------------------------
+				if(conv_r0c0_f0 > 0.0){
+					delta_b0 += del_conv_r0c0_f0;
+				}
+
+				if(conv_r0c1_f0 > 0.0){
+					delta_b0 += del_conv_r0c1_f0;
+				}
+
+				if(conv_r1c0_f0 > 0.0){
+					delta_b0 += del_conv_r1c0_f0;
+				}
+
+				if(conv_r1c1_f0 > 0.0){
+					delta_b0 += del_conv_r1c1_f0;
+				}
+
+				// ------------------------------------filter 1-------------------------------------------
+				if(conv_r0c0_f1 > 0.0){
+					delta_b1 += del_conv_r0c0_f1;
+				}
+
+				if(conv_r0c1_f1 > 0.0){
+					delta_b1 += del_conv_r0c1_f1;
+				}
+
+				if(conv_r1c0_f1 > 0.0){
+					delta_b1 += del_conv_r1c0_f1;
+				}
+
+				if(conv_r1c1_f1 > 0.0){
+					delta_b1 += del_conv_r1c1_f1;
+				}
+
+				// ------------------------------------filter 2-------------------------------------------
+				if(conv_r0c0_f2 > 0.0){
+					delta_b2 += del_conv_r0c0_f2;
+				}
+
+				if(conv_r0c1_f2 > 0.0){
+					delta_b2 += del_conv_r0c1_f2;
+				}
+
+				if(conv_r1c0_f2 > 0.0){
+					delta_b2 += del_conv_r1c0_f2;
+				}
+
+				if(conv_r1c1_f2 > 0.0){
+					delta_b2 += del_conv_r1c1_f2;
+				}
+
 			}
 		}
     }
@@ -1047,6 +1105,11 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 		    (fil_w->data)[offset(fil_w, 2, r, c, 0)] = weight_f2 - MULTIPLIER*delta_ws[2][r][c];
     	}
     }
+
+    INCREMENT_FLOPS(6)
+	(fil_b->data)[offset(fil_b, 0, 0, 0, 0)] -= MULTIPLIER*delta_b0;
+	(fil_b->data)[offset(fil_b, 1, 0, 0, 0)] -= MULTIPLIER*delta_b1;
+	(fil_b->data)[offset(fil_b, 2, 0, 0, 0)] -= MULTIPLIER*delta_b2;
 }
 
 void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
