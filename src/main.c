@@ -323,7 +323,6 @@ void binary_net()
             bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index, 
                                 pool_index_i, pool_index_j);
             bp_softmax_to_conv_cycles += cycles_count_stop();
-
             //bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
 
             cycles_count_start();

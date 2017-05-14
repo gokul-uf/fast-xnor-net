@@ -230,7 +230,7 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 	}
 }
 
-void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, int* labels, int base, tensor* fully_con_w, 
+/*void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, int* labels, int base, tensor* fully_con_w, 
 	int shuffle_index[], int pool_index_i[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
 	double sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7, sum8, sum9;
@@ -241,9 +241,32 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 
 	double w0, w1, w2, w3, w4 ,w5, w6, w7, w8, w9;
 
+	double softmax_out_0;
+	double softmax_out_1;
+	double softmax_out_2;
+	double softmax_out_3;
+	double softmax_out_4;
+	double softmax_out_5;
+	double softmax_out_6;
+	double softmax_out_7;
+	double softmax_out_8;
+	double softmax_out_9;
+
 	for (int b = 0; b < BATCH_SIZE; ++b)
 	{
 		int cur_label = labels[shuffle_index[base+b]];
+
+		softmax_out_0 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 0)];
+		softmax_out_1 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 1)];
+		softmax_out_2 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 2)];
+		softmax_out_3 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 3)];
+		softmax_out_4 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 4)];
+		softmax_out_5 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 5)];
+		softmax_out_6 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 6)];
+		softmax_out_7 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 7)];
+		softmax_out_8 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 8)];
+		softmax_out_9 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 9)];
+
 		for (int f = 0; f < NUM_FILS; ++f)
 		{
 			for (int r = 0; r < N_ROWS_POOL; ++r)
@@ -253,16 +276,16 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 					INCREMENT_FLOPS(30)
 					// Unrolling the inner loop on digits completely
 
-					delta0 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 0)] - (cur_label == 0);
-					delta1 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 1)] - (cur_label == 1);
-					delta2 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 2)] - (cur_label == 2);
-					delta3 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 3)] - (cur_label == 3);
-					delta4 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 4)] - (cur_label == 4);
-					delta5 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 5)] - (cur_label == 5);
-					delta6 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 6)] - (cur_label == 6);
-					delta7 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 7)] - (cur_label == 7);
-					delta8 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 8)] - (cur_label == 8);
-					delta9 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 9)] - (cur_label == 9);
+					delta0 = softmax_out_0 - (cur_label == 0);
+					delta1 = softmax_out_1 - (cur_label == 1);
+					delta2 = softmax_out_2 - (cur_label == 2);
+					delta3 = softmax_out_3 - (cur_label == 3);
+					delta4 = softmax_out_4 - (cur_label == 4);
+					delta5 = softmax_out_5 - (cur_label == 5);
+					delta6 = softmax_out_6 - (cur_label == 6);
+					delta7 = softmax_out_7 - (cur_label == 7);
+					delta8 = softmax_out_8 - (cur_label == 8);
+					delta9 = softmax_out_9 - (cur_label == 9);
 
 					w0 = (fully_con_w->data)[offset(fully_con_w, 0, c, r, f)];
 					w1 = (fully_con_w->data)[offset(fully_con_w, 1, c, r, f)];
@@ -302,11 +325,233 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 					int row = pool_index_i[b][f][r][c];
 					int col = pool_index_j[b][f][r][c];
 
-					if (conv_t->data[offset(conv_t, b, row, col, f)] > 0.0)
+					if (conv_t->data[offset(conv_t, b, col, row, f)] > 0.0)
 					{
 						(del_conv->data)[offset(del_conv, b, col, row, f)] = sum_fin;
 					}
 
+				}
+			}
+		}
+	}
+}*/
+
+void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, int* labels, int base, tensor* fully_con_w, 
+	int shuffle_index[], int pool_index_i[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
+{
+	double delta0, delta1, delta2, delta3, delta4, delta5, delta6, delta7, delta8, delta9;
+
+	double softmax_out_0;
+	double softmax_out_1;
+	double softmax_out_2;
+	double softmax_out_3;
+	double softmax_out_4;
+	double softmax_out_5;
+	double softmax_out_6;
+	double softmax_out_7;
+	double softmax_out_8;
+	double softmax_out_9;
+
+	double w0_f0, w0_f1, w0_f2; 
+    double w1_f0, w1_f1, w1_f2; 
+    double w2_f0, w2_f1, w2_f2; 
+    double w3_f0, w3_f1, w3_f2; 
+    double w4_f0, w4_f1, w4_f2; 
+    double w5_f0, w5_f1, w5_f2; 
+    double w6_f0, w6_f1, w6_f2; 
+    double w7_f0, w7_f1, w7_f2; 
+    double w8_f0, w8_f1, w8_f2; 
+    double w9_f0, w9_f1, w9_f2; 
+
+	double sum0_f0, sum0_f1, sum0_f2;
+	double sum1_f0, sum1_f1, sum1_f2;
+	double sum2_f0, sum2_f1, sum2_f2;
+	double sum3_f0, sum3_f1, sum3_f2;
+	double sum4_f0, sum4_f1, sum4_f2;
+	double sum5_f0, sum5_f1, sum5_f2;
+	double sum6_f0, sum6_f1, sum6_f2;
+	double sum7_f0, sum7_f1, sum7_f2;
+	double sum8_f0, sum8_f1, sum8_f2;
+	double sum9_f0, sum9_f1, sum9_f2;
+
+    double sum01_f0, sum01_f1, sum01_f2;
+    double sum23_f0, sum23_f1, sum23_f2;
+    double sum45_f0, sum45_f1, sum45_f2;
+    double sum67_f0, sum67_f1, sum67_f2;
+    double sum89_f0, sum89_f1, sum89_f2;
+
+	double sum0123_f0, sum0123_f1, sum0123_f2;
+	double sum4567_f0, sum4567_f1, sum4567_f2;
+	double  sum0_7_f0,  sum0_7_f1,  sum0_7_f2;
+	double sum_fin_f0, sum_fin_f1, sum_fin_f2;
+
+
+
+	int row_f0;
+	int col_f0;
+	int row_f1;
+	int col_f1;
+	int row_f2;
+	int col_f2;
+
+	for (int b = 0; b < BATCH_SIZE; ++b)
+	{
+		int cur_label = labels[shuffle_index[base+b]];
+
+		softmax_out_0 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 0)];
+		softmax_out_1 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 1)];
+		softmax_out_2 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 2)];
+		softmax_out_3 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 3)];
+		softmax_out_4 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 4)];
+		softmax_out_5 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 5)];
+		softmax_out_6 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 6)];
+		softmax_out_7 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 7)];
+		softmax_out_8 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 8)];
+		softmax_out_9 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 9)];
+
+
+		for (int r = 0; r < N_ROWS_POOL; ++r)
+		{
+			for (int c = 0; c < N_COLS_POOL; ++c)
+			{
+				INCREMENT_FLOPS(70)
+				// Unrolling the inner loop on digits completely
+
+				delta0 = softmax_out_0 - (cur_label == 0);
+				delta1 = softmax_out_1 - (cur_label == 1);
+				delta2 = softmax_out_2 - (cur_label == 2);
+				delta3 = softmax_out_3 - (cur_label == 3);
+				delta4 = softmax_out_4 - (cur_label == 4);
+				delta5 = softmax_out_5 - (cur_label == 5);
+				delta6 = softmax_out_6 - (cur_label == 6);
+				delta7 = softmax_out_7 - (cur_label == 7);
+				delta8 = softmax_out_8 - (cur_label == 8);
+				delta9 = softmax_out_9 - (cur_label == 9);
+
+				w0_f0 = (fully_con_w->data)[offset(fully_con_w, 0, c, r, 0)];
+				w1_f0 = (fully_con_w->data)[offset(fully_con_w, 1, c, r, 0)];
+				w2_f0 = (fully_con_w->data)[offset(fully_con_w, 2, c, r, 0)];
+				w3_f0 = (fully_con_w->data)[offset(fully_con_w, 3, c, r, 0)];
+				w4_f0 = (fully_con_w->data)[offset(fully_con_w, 4, c, r, 0)];
+				w5_f0 = (fully_con_w->data)[offset(fully_con_w, 5, c, r, 0)];
+				w6_f0 = (fully_con_w->data)[offset(fully_con_w, 6, c, r, 0)];
+				w7_f0 = (fully_con_w->data)[offset(fully_con_w, 7, c, r, 0)];
+				w8_f0 = (fully_con_w->data)[offset(fully_con_w, 8, c, r, 0)];
+				w9_f0 = (fully_con_w->data)[offset(fully_con_w, 9, c, r, 0)];
+
+				w0_f1 = (fully_con_w->data)[offset(fully_con_w, 0, c, r, 1)];
+				w1_f1 = (fully_con_w->data)[offset(fully_con_w, 1, c, r, 1)];
+				w2_f1 = (fully_con_w->data)[offset(fully_con_w, 2, c, r, 1)];
+				w3_f1 = (fully_con_w->data)[offset(fully_con_w, 3, c, r, 1)];
+				w4_f1 = (fully_con_w->data)[offset(fully_con_w, 4, c, r, 1)];
+				w5_f1 = (fully_con_w->data)[offset(fully_con_w, 5, c, r, 1)];
+				w6_f1 = (fully_con_w->data)[offset(fully_con_w, 6, c, r, 1)];
+				w7_f1 = (fully_con_w->data)[offset(fully_con_w, 7, c, r, 1)];
+				w8_f1 = (fully_con_w->data)[offset(fully_con_w, 8, c, r, 1)];
+				w9_f1 = (fully_con_w->data)[offset(fully_con_w, 9, c, r, 1)];
+
+				w0_f2 = (fully_con_w->data)[offset(fully_con_w, 0, c, r, 2)];
+				w1_f2 = (fully_con_w->data)[offset(fully_con_w, 1, c, r, 2)];
+				w2_f2 = (fully_con_w->data)[offset(fully_con_w, 2, c, r, 2)];
+				w3_f2 = (fully_con_w->data)[offset(fully_con_w, 3, c, r, 2)];
+				w4_f2 = (fully_con_w->data)[offset(fully_con_w, 4, c, r, 2)];
+				w5_f2 = (fully_con_w->data)[offset(fully_con_w, 5, c, r, 2)];
+				w6_f2 = (fully_con_w->data)[offset(fully_con_w, 6, c, r, 2)];
+				w7_f2 = (fully_con_w->data)[offset(fully_con_w, 7, c, r, 2)];
+				w8_f2 = (fully_con_w->data)[offset(fully_con_w, 8, c, r, 2)];
+				w9_f2 = (fully_con_w->data)[offset(fully_con_w, 9, c, r, 2)];
+
+
+				sum0_f0 = delta0 * w0_f0;
+				sum1_f0 = delta1 * w1_f0;
+				sum2_f0 = delta2 * w2_f0;
+				sum3_f0 = delta3 * w3_f0;
+				sum4_f0 = delta4 * w4_f0;
+				sum5_f0 = delta5 * w5_f0;
+				sum6_f0 = delta6 * w6_f0;
+				sum7_f0 = delta7 * w7_f0;
+				sum8_f0 = delta8 * w8_f0;
+				sum9_f0 = delta9 * w9_f0;
+
+				sum0_f1 = delta0 * w0_f1;
+				sum1_f1 = delta1 * w1_f1;
+				sum2_f1 = delta2 * w2_f1;
+				sum3_f1 = delta3 * w3_f1;
+				sum4_f1 = delta4 * w4_f1;
+				sum5_f1 = delta5 * w5_f1;
+				sum6_f1 = delta6 * w6_f1;
+				sum7_f1 = delta7 * w7_f1;
+				sum8_f1 = delta8 * w8_f1;
+				sum9_f1 = delta9 * w9_f1;
+
+				sum0_f2 = delta0 * w0_f2;
+				sum1_f2 = delta1 * w1_f2;
+				sum2_f2 = delta2 * w2_f2;
+				sum3_f2 = delta3 * w3_f2;
+				sum4_f2 = delta4 * w4_f2;
+				sum5_f2 = delta5 * w5_f2;
+				sum6_f2 = delta6 * w6_f2;
+				sum7_f2 = delta7 * w7_f2;
+				sum8_f2 = delta8 * w8_f2;
+				sum9_f2 = delta9 * w9_f2;
+
+				sum01_f0 = sum0_f0+sum1_f0;
+				sum23_f0 = sum2_f0+sum3_f0;
+				sum45_f0 = sum4_f0+sum5_f0;
+				sum67_f0 = sum6_f0+sum7_f0;
+				sum89_f0 = sum8_f0+sum9_f0;
+
+				sum0123_f0 = sum01_f0   + sum23_f0;
+				sum4567_f0 = sum45_f0   + sum67_f0;
+				 sum0_7_f0 = sum0123_f0 + sum4567_f0;
+				sum_fin_f0 = sum0_7_f0  + sum89_f0;
+
+				sum01_f1 = sum0_f1+sum1_f1;
+				sum23_f1 = sum2_f1+sum3_f1;
+				sum45_f1 = sum4_f1+sum5_f1;
+				sum67_f1 = sum6_f1+sum7_f1;
+				sum89_f1 = sum8_f1+sum9_f1;
+
+				sum0123_f1 = sum01_f1   + sum23_f1;
+				sum4567_f1 = sum45_f1   + sum67_f1;
+				sum0_7_f1  = sum0123_f1 + sum4567_f1;
+				sum_fin_f1 = sum0_7_f1  + sum89_f1;
+
+				sum01_f2 = sum0_f2+sum1_f2;
+				sum23_f2 = sum2_f2+sum3_f2;
+				sum45_f2 = sum4_f2+sum5_f2;
+				sum67_f2 = sum6_f2+sum7_f2;
+				sum89_f2 = sum8_f2+sum9_f2;
+
+				sum0123_f2 = sum01_f2   + sum23_f2;
+				sum4567_f2 = sum45_f2   + sum67_f2;
+				sum0_7_f2  = sum0123_f2 + sum4567_f2;
+				sum_fin_f2 = sum0_7_f2  + sum89_f2;
+
+
+				// bp from max_pool to conv
+				row_f0 = pool_index_i[b][0][r][c];
+				col_f0 = pool_index_j[b][0][r][c];
+
+				row_f1 = pool_index_i[b][1][r][c];
+				col_f1 = pool_index_j[b][1][r][c];
+
+				row_f2 = pool_index_i[b][2][r][c];
+				col_f2 = pool_index_j[b][2][r][c];
+
+				if (conv_t->data[offset(conv_t, b, col_f0, row_f0, 0)] > 0.0)
+				{
+					(del_conv->data)[offset(del_conv, b, col_f0, row_f0, 0)] = sum_fin_f0;
+				}
+
+				if (conv_t->data[offset(conv_t, b, col_f1, row_f1, 1)] > 0.0)
+				{
+					(del_conv->data)[offset(del_conv, b, col_f1, row_f1, 1)] = sum_fin_f1;
+				}
+
+				if (conv_t->data[offset(conv_t, b, col_f2, row_f2, 2)] > 0.0)
+				{
+					(del_conv->data)[offset(del_conv, b, col_f2, row_f2, 2)] = sum_fin_f2;
 				}
 			}
 		}
