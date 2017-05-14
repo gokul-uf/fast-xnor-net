@@ -401,6 +401,7 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 	}
 }*/
 
+/*// unroll fil rows and cols
 void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
 								tensor* input_images, int base, int shuffle_index[])
 {
@@ -816,6 +817,138 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 		    (fil_w->data)[offset(fil_w, 2, r, c, 0)] = weight2 - MULTIPLIER*delta_w2;
 		}
 	}
+}*/
+
+// unroll conv rows and cols
+void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+								tensor* input_images, int base, int shuffle_index[])
+{
+	INCREMENT_FLOPS(2)
+	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
+	double delta_w;
+	int cur_image;
+
+	double alpha_0 = alphas[0];
+	double alpha_1 = alphas[1];
+	double alpha_2 = alphas[2];
+
+	double conv_f0;
+	double conv_f1;
+	double conv_f2;
+
+	double del_conv_f0;
+	double del_conv_f1;
+	double del_conv_f2;
+
+	double input_pixel;
+
+	double weight_f0;
+	double weight_f1;
+	double weight_f2;
+
+	double delta_ws[NUM_FILS][FIL_ROWS][FIL_COLS];
+
+	for (int i = 0; i < NUM_FILS; ++i)
+	{
+		for (int j = 0; j < FIL_ROWS; ++j)
+		{
+			for (int k = 0; k < FIL_COLS; ++k)
+			{
+				delta_ws[i][j][k] = 0.0;
+			}
+		}
+	}
+
+	for (int b = 0; b < BATCH_SIZE; ++b)
+    {
+    	cur_image = shuffle_index[b+base];
+
+		for (int i = 0; i < N_ROWS_CONV; ++i)
+		{
+
+			for (int j = 0; j < N_COLS_CONV; ++j)
+			{
+				conv_f0 = (conv_t->data)[offset(conv_t, b, j  , i, 0)];
+				conv_f1 = (conv_t->data)[offset(conv_t, b, j  , i, 1)];
+				conv_f2 = (conv_t->data)[offset(conv_t, b, j  , i, 2)];
+
+				del_conv_f0 = (del_conv->data)[offset(del_conv, b, j, i, 0)];
+				del_conv_f1 = (del_conv->data)[offset(del_conv, b, j, i, 1)];
+				del_conv_f2 = (del_conv->data)[offset(del_conv, b, j, i, 2)];
+
+				for (int r = 0; r < FIL_ROWS; ++r)
+				{
+
+					for (int c = 0; c < FIL_COLS; ++c)
+					{
+						INCREMENT_FLOPS(9)
+
+						input_pixel = (input_images->data)[offset(input_images, cur_image, j+c, i+r, 0)];
+
+						if (conv_f0 > 0.0)
+						{
+							delta_ws[0][r][c] += del_conv_f0*input_pixel;
+						}
+						
+						if (conv_f1 > 0.0)
+						{
+							delta_ws[1][r][c] += del_conv_f1*input_pixel;
+						}
+						
+						if (conv_f2 > 0.0)
+						{
+							delta_ws[2][r][c] += del_conv_f2*input_pixel;
+						}
+						
+					}
+				}
+			}
+		}
+    }
+
+    for (int r = 0; r < FIL_ROWS; ++r)
+    {
+    	for (int c = 0; c < FIL_COLS; ++c)
+    	{
+    		INCREMENT_FLOPS(21)
+
+    		// modifying delta_w to account for sign function applied on weights
+		    weight_f0 = (fil_w->data)[offset(fil_w, 0, r, c, 0)];
+		    weight_f1 = (fil_w->data)[offset(fil_w, 1, r, c, 0)];
+		    weight_f2 = (fil_w->data)[offset(fil_w, 2, r, c, 0)];
+
+		    if (weight_f0 <= 1 && weight_f0 >= -1)
+		    {
+		    	delta_ws[0][r][c] *= ( (alpha_0*weight_f0) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_ws[0][r][c] *= recip_n;
+	    	}
+
+	    	if (weight_f1 <= 1 && weight_f1 >= -1)
+		    {
+		    	delta_ws[1][r][c] *= ( (alpha_1*weight_f1) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_ws[1][r][c] *= recip_n;
+	    	}
+
+	    	if (weight_f2 <= 1 && weight_f2 >= -1)
+		    {
+		    	delta_ws[2][r][c] *= ( (alpha_2*weight_f2) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_ws[2][r][c] *= recip_n;
+	    	}
+		    
+		    (fil_w->data)[offset(fil_w, 0, r, c, 0)] = weight_f0 - MULTIPLIER*delta_ws[0][r][c];
+		    (fil_w->data)[offset(fil_w, 1, r, c, 0)] = weight_f1 - MULTIPLIER*delta_ws[1][r][c];
+		    (fil_w->data)[offset(fil_w, 2, r, c, 0)] = weight_f2 - MULTIPLIER*delta_ws[2][r][c];
+    	}
+    }
 }
 
 void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
