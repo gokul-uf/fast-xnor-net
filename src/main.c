@@ -54,22 +54,22 @@ int correct_preds = 0;
 double val_acc = 0.0;
 
 // perf counters
-int64_t binarize_cycles = 0;
-int64_t conv_cycles = 0;
-int64_t pool_cycles = 0;
-int64_t fully_cycles = 0;
-int64_t soft_cycles = 0;
-int64_t bp_soft_to_pool_cycles = 0;
-int64_t bp_pool_to_conv_cycles = 0;
-int64_t forward_cycles = 0;
-int64_t backward_cycles = 0;
-int64_t total_cycles = 0;
+double binarize_cycles;
+double conv_cycles;
+double pool_cycles;
+double fully_cycles;
+double soft_cycles;
+double bp_soft_to_pool_cycles;
+double bp_pool_to_conv_cycles;
+double forward_cycles;
+double backward_cycles;
+double total_cycles;
 
-int64_t bp_softmax_to_conv_cycles = 0;
-int64_t update_softmax_weights_cycles = 0;
-int64_t update_softmax_biases_cycles = 0;
-int64_t update_conv_weights_cycles = 0;
-int64_t update_conv_biases_cycles = 0;
+double bp_softmax_to_conv_cycles;
+double update_softmax_weights_cycles;
+double update_softmax_biases_cycles;
+double update_conv_weights_cycles;
+double update_conv_biases_cycles;
 
 int main()
 {
@@ -282,6 +282,7 @@ void binary_net()
 {
     for (int epoch = 0; epoch < NUM_EPOCHS; ++epoch)
     {
+        initialize_cycle_counter();
         // Shuffle all 60k only once, they keep last 10k for validtion
         if (epoch == 0)
         {
@@ -300,12 +301,13 @@ void binary_net()
             binarize_cycles += cycles_count_stop();
 
             cycles_count_start();
-            bin_convolution(&input_images, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index);
+            bin_convolution(&input_images, &conv_t, &pool_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index,
+                                pool_index_i, pool_index_j);
             conv_cycles += cycles_count_stop();
            
-            cycles_count_start();
+            /*cycles_count_start();
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
-            pool_cycles += cycles_count_stop();
+            pool_cycles += cycles_count_stop();*/
 
             cycles_count_start();
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
@@ -369,30 +371,43 @@ void binary_net()
             reset_to_zero(&softmax_out);
         }
 
-        forward_cycles = (binarize_cycles + conv_cycles + pool_cycles + fully_cycles + soft_cycles)/N_BATCHES;
+        binarize_cycles /= N_BATCHES;
+        conv_cycles     /= N_BATCHES;
+        pool_cycles     /= N_BATCHES;
+        fully_cycles    /= N_BATCHES;
+        soft_cycles     /= N_BATCHES;
+
+        forward_cycles = (binarize_cycles + conv_cycles + pool_cycles + fully_cycles + soft_cycles);
+
+
+        bp_softmax_to_conv_cycles     /= N_BATCHES;
+        update_softmax_weights_cycles /= N_BATCHES;
+        update_softmax_biases_cycles  /= N_BATCHES;
+        update_conv_weights_cycles    /= N_BATCHES;
+        update_conv_biases_cycles     /= N_BATCHES;
 
         backward_cycles = (bp_softmax_to_conv_cycles + update_softmax_weights_cycles + update_softmax_biases_cycles
-            + update_conv_weights_cycles + update_conv_biases_cycles)/N_BATCHES;
+            + update_conv_weights_cycles + update_conv_biases_cycles);
 
         total_cycles = forward_cycles + backward_cycles;
 
-        printf("\nPER BATCH STATS\n");
-        printf("epoch                 : %d\n", epoch+1);
-        printf("binarize_cycles       : %lld\n", binarize_cycles);
-        printf("conv_cycles           : %lld\n", conv_cycles);
-        printf("pool_cycles           : %lld\n", pool_cycles);
-        printf("fully_cycles          : %lld\n", fully_cycles);
-        printf("soft_cycles           : %lld\n\n", soft_cycles);
+        printf("\nPER EPOCH STATS\n");
+        printf("EPOCH                 : %d\n\n", epoch+1);
+        printf("binarize_cycles       : %.2f\n", binarize_cycles);
+        printf("conv_cycles           : %.2f\n", conv_cycles);
+        printf("pool_cycles           : %.2f\n", pool_cycles);
+        printf("fully_cycles          : %.2f\n", fully_cycles);
+        printf("soft_cycles           : %.2f\n\n", soft_cycles);
 
-        printf("bp_soft_to_conv       : %lld\n", bp_softmax_to_conv_cycles);
-        printf("update_softmax_weights: %lld\n", update_softmax_weights_cycles);
-        printf("update_softmax_biases : %lld\n", update_softmax_biases_cycles);
-        printf("update_conv_weights   : %lld\n", update_conv_weights_cycles);
-        printf("update_conv_biases    : %lld\n\n", update_conv_biases_cycles);
+        printf("bp_soft_to_conv       : %.2f\n", bp_softmax_to_conv_cycles);
+        printf("update_softmax_weights: %.2f\n", update_softmax_weights_cycles);
+        printf("update_softmax_biases : %.2f\n", update_softmax_biases_cycles);
+        printf("update_conv_weights   : %.2f\n", update_conv_weights_cycles);
+        printf("update_conv_biases    : %.2f\n\n", update_conv_biases_cycles);
         
-        printf("forward_cycles        : %lld\n", forward_cycles);
-        printf("backward_cycles       : %lld\n", backward_cycles);
-        printf("total_cycles          : %lld\n", total_cycles);
+        printf("forward_cycles        : %.2f\n", forward_cycles);
+        printf("backward_cycles       : %.2f\n", backward_cycles);
+        printf("total_cycles          : %.2f\n", total_cycles);
         printf("\n");
         PRINT_FLOPS();
         PRINT_PERF(total_cycles);
@@ -540,8 +555,9 @@ double bin_validate(){
     int correct_preds = 0;
     for (int i = NUM_TRAIN; i+1 < NUM_TRAIN + NUM_VAL; i=i+2)
         {
-            bin_convolution(&input_images, &conv_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index);
-            max_pooling(&conv_t, &pool_t, NULL, NULL, 2, 'V');
+            bin_convolution(&input_images, &conv_t, &pool_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index,
+                                pool_index_i, pool_index_j);
+            //max_pooling(&conv_t, &pool_t, NULL, NULL, 2, 'V');
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 2);
             softmax(&fully_con_out, &softmax_out, pred, 2);
 
@@ -570,6 +586,26 @@ double xnor_validate(){
         }
 
     return (correct_preds*100.0) / NUM_VAL;
+}
+
+initialize_cycle_counter()
+{
+    binarize_cycles = 0;
+    conv_cycles = 0;
+    pool_cycles = 0;
+    fully_cycles = 0;
+    soft_cycles = 0;
+    bp_soft_to_pool_cycles = 0;
+    bp_pool_to_conv_cycles = 0;
+    forward_cycles = 0;
+    backward_cycles = 0;
+    total_cycles = 0;
+
+    bp_softmax_to_conv_cycles = 0;
+    update_softmax_weights_cycles = 0;
+    update_softmax_biases_cycles = 0;
+    update_conv_weights_cycles = 0;
+    update_conv_biases_cycles = 0;
 }
 
 
