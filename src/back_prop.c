@@ -7,7 +7,8 @@ int N_COLS_POOL;
 int TOTAL_FLOPS;
 double MULTIPLIER;
 
-void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+// batches in innermost loop
+/*void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
 {
 	double delta_w0, delta_w1, delta_w2, delta_w3, delta_w4, delta_w5, delta_w6, delta_w7, delta_w8, delta_w9;
 	double delta0, delta1, delta2, delta3, delta4, delta5, delta6, delta7, delta8, delta9;
@@ -66,6 +67,174 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 				(fully_con_w->data)[offset(fully_con_w, 8, c, r, f)] -= MULTIPLIER*delta_w8;
 				(fully_con_w->data)[offset(fully_con_w, 9, c, r, f)] -= MULTIPLIER*delta_w9;
 			}
+		}
+	}
+}*/
+
+// batches in outermost loop
+void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+{
+	int true_label;
+
+	double softmax_out_0;
+	double softmax_out_1;
+	double softmax_out_2;
+	double softmax_out_3;
+	double softmax_out_4;
+	double softmax_out_5;
+	double softmax_out_6;
+	double softmax_out_7;
+	double softmax_out_8;
+	double softmax_out_9;
+
+	double delta0;
+	double delta1;
+	double delta2;
+	double delta3;
+	double delta4;
+	double delta5;
+	double delta6;
+	double delta7;
+	double delta8;
+	double delta9;
+
+	double mat_val_f0, mat_val_f1, mat_val_f2;
+
+
+	double delta_ws[N_ROWS_POOL][N_COLS_POOL][NUM_FILS][N_DIGS];
+
+	// Initialize deltas to zeroes
+	for (int r = 0; r < N_ROWS_POOL; ++r)
+	{
+		for (int c = 0; c < N_COLS_POOL; ++c)
+		{
+			for (int f = 0; f < NUM_FILS; ++f)
+			{
+				for (int d = 0; d < N_DIGS; ++d)
+				{
+					delta_ws[r][c][f][d] = 0.0;
+				}
+			}
+		}
+	}
+
+	for (int b = 0; b < BATCH_SIZE; ++b)
+	{
+
+		true_label = labels[shuffle_index[base+b]];
+
+		softmax_out_0 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 0)];
+		softmax_out_1 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 1)];
+		softmax_out_2 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 2)];
+		softmax_out_3 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 3)];
+		softmax_out_4 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 4)];
+		softmax_out_5 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 5)];
+		softmax_out_6 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 6)];
+		softmax_out_7 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 7)];
+		softmax_out_8 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 8)];
+		softmax_out_9 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 9)];
+
+		delta0 = softmax_out_0 - (true_label == 0);
+		delta1 = softmax_out_1 - (true_label == 1);
+		delta2 = softmax_out_2 - (true_label == 2);
+		delta3 = softmax_out_3 - (true_label == 3);
+		delta4 = softmax_out_4 - (true_label == 4);
+		delta5 = softmax_out_5 - (true_label == 5);
+		delta6 = softmax_out_6 - (true_label == 6);
+		delta7 = softmax_out_7 - (true_label == 7);
+		delta8 = softmax_out_8 - (true_label == 8);
+		delta9 = softmax_out_9 - (true_label == 9);
+
+		for (int r = 0; r < N_ROWS_POOL; ++r)
+		{
+			for (int c = 0; c < N_COLS_POOL; ++c)
+			{
+				INCREMENT_FLOPS(60)
+
+				mat_val_f0 = (pool_t->data)[offset(pool_t, b, c, r, 0)];
+				mat_val_f1 = (pool_t->data)[offset(pool_t, b, c, r, 1)];
+				mat_val_f2 = (pool_t->data)[offset(pool_t, b, c, r, 2)];
+
+				delta_ws[r][c][0][0] += delta0 * mat_val_f0;
+				delta_ws[r][c][0][1] += delta1 * mat_val_f0;
+				delta_ws[r][c][0][2] += delta2 * mat_val_f0;
+				delta_ws[r][c][0][3] += delta3 * mat_val_f0;
+				delta_ws[r][c][0][4] += delta4 * mat_val_f0;
+				delta_ws[r][c][0][5] += delta5 * mat_val_f0;
+				delta_ws[r][c][0][6] += delta6 * mat_val_f0;
+				delta_ws[r][c][0][7] += delta7 * mat_val_f0;
+				delta_ws[r][c][0][8] += delta8 * mat_val_f0;
+				delta_ws[r][c][0][9] += delta9 * mat_val_f0;
+
+				delta_ws[r][c][1][0] += delta0 * mat_val_f1;
+				delta_ws[r][c][1][1] += delta1 * mat_val_f1;
+				delta_ws[r][c][1][2] += delta2 * mat_val_f1;
+				delta_ws[r][c][1][3] += delta3 * mat_val_f1;
+				delta_ws[r][c][1][4] += delta4 * mat_val_f1;
+				delta_ws[r][c][1][5] += delta5 * mat_val_f1;
+				delta_ws[r][c][1][6] += delta6 * mat_val_f1;
+				delta_ws[r][c][1][7] += delta7 * mat_val_f1;
+				delta_ws[r][c][1][8] += delta8 * mat_val_f1;
+				delta_ws[r][c][1][9] += delta9 * mat_val_f1;
+
+				delta_ws[r][c][2][0] += delta0 * mat_val_f2;
+				delta_ws[r][c][2][1] += delta1 * mat_val_f2;
+				delta_ws[r][c][2][2] += delta2 * mat_val_f2;
+				delta_ws[r][c][2][3] += delta3 * mat_val_f2;
+				delta_ws[r][c][2][4] += delta4 * mat_val_f2;
+				delta_ws[r][c][2][5] += delta5 * mat_val_f2;
+				delta_ws[r][c][2][6] += delta6 * mat_val_f2;
+				delta_ws[r][c][2][7] += delta7 * mat_val_f2;
+				delta_ws[r][c][2][8] += delta8 * mat_val_f2;
+				delta_ws[r][c][2][9] += delta9 * mat_val_f2;
+
+			}
+		}
+	}
+
+	// update the weights
+	for (int r = 0; r < N_ROWS_POOL; ++r)
+	{
+		for (int c = 0; c < N_COLS_POOL; ++c)
+		{
+
+				INCREMENT_FLOPS(60)
+
+				// ---------------------------------------Filter 0-------------------------------------------
+				(fully_con_w->data)[offset(fully_con_w, 0, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][0];
+				(fully_con_w->data)[offset(fully_con_w, 1, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][1];
+				(fully_con_w->data)[offset(fully_con_w, 2, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][2];
+				(fully_con_w->data)[offset(fully_con_w, 3, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][3];
+				(fully_con_w->data)[offset(fully_con_w, 4, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][4];
+				(fully_con_w->data)[offset(fully_con_w, 5, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][5];
+				(fully_con_w->data)[offset(fully_con_w, 6, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][6];
+				(fully_con_w->data)[offset(fully_con_w, 7, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][7];
+				(fully_con_w->data)[offset(fully_con_w, 8, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][8];
+				(fully_con_w->data)[offset(fully_con_w, 9, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][9];
+
+				// ---------------------------------------Filter 1-------------------------------------------
+				(fully_con_w->data)[offset(fully_con_w, 0, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][0];
+				(fully_con_w->data)[offset(fully_con_w, 1, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][1];
+				(fully_con_w->data)[offset(fully_con_w, 2, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][2];
+				(fully_con_w->data)[offset(fully_con_w, 3, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][3];
+				(fully_con_w->data)[offset(fully_con_w, 4, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][4];
+				(fully_con_w->data)[offset(fully_con_w, 5, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][5];
+				(fully_con_w->data)[offset(fully_con_w, 6, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][6];
+				(fully_con_w->data)[offset(fully_con_w, 7, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][7];
+				(fully_con_w->data)[offset(fully_con_w, 8, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][8];
+				(fully_con_w->data)[offset(fully_con_w, 9, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][9];
+
+				// ---------------------------------------Filter 2-------------------------------------------
+				(fully_con_w->data)[offset(fully_con_w, 0, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][0];
+				(fully_con_w->data)[offset(fully_con_w, 1, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][1];
+				(fully_con_w->data)[offset(fully_con_w, 2, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][2];
+				(fully_con_w->data)[offset(fully_con_w, 3, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][3];
+				(fully_con_w->data)[offset(fully_con_w, 4, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][4];
+				(fully_con_w->data)[offset(fully_con_w, 5, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][5];
+				(fully_con_w->data)[offset(fully_con_w, 6, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][6];
+				(fully_con_w->data)[offset(fully_con_w, 7, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][7];
+				(fully_con_w->data)[offset(fully_con_w, 8, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][8];
+				(fully_con_w->data)[offset(fully_con_w, 9, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][9];
 		}
 	}
 }
@@ -1064,7 +1233,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	}
 }*/
 
-// unroll conv rows and cols
+// unroll conv rows and cols, num of filters
 void bin_update_conv_ws_bs(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* fil_b, tensor* del_conv, 
 	tensor* conv_t, tensor* input_images, int base, int shuffle_index[])
 {
