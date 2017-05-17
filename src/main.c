@@ -650,6 +650,7 @@ double xnor_validate(){
 initialize_cycle_counter()
 {
     binarize_cycles = 0;
+    bin_activ_cycles = 0;
     conv_cycles = 0;
     pool_cycles = 0;
     fully_cycles = 0;
