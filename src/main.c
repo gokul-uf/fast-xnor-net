@@ -302,13 +302,16 @@ void binary_net()
             binarize_cycles += cycles_count_stop();
 
             cycles_count_start();
-            bin_convolution(&input_images, &conv_t, &pool_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index,
-                                pool_index_i, pool_index_j);
+            /*bin_convolution(&input_images, &conv_t, &pool_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index,
+                                pool_index_i, pool_index_j);*/
+
+            bin_convolution(&input_images, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index);
+
             conv_cycles += cycles_count_stop();
            
-            /*cycles_count_start();
+            cycles_count_start();
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
-            pool_cycles += cycles_count_stop();*/
+            pool_cycles += cycles_count_stop();
 
             cycles_count_start();
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
@@ -320,11 +323,18 @@ void binary_net()
 
             //------------------------------BACK PROPAGATION----------------------------------------------
 
-            cycles_count_start();
+            /*cycles_count_start();
             bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index, 
                                 pool_index_i, pool_index_j);
-            bp_softmax_to_conv_cycles += cycles_count_stop();
-            //bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
+            bp_softmax_to_conv_cycles += cycles_count_stop();*/
+
+            cycles_count_start();
+            bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
+            bp_soft_to_pool_cycles += cycles_count_stop();
+
+            cycles_count_start();
+            bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
+            bp_pool_to_conv_cycles += cycles_count_stop();
 
             cycles_count_start();
             update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
@@ -334,16 +344,18 @@ void binary_net()
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
             update_softmax_biases_cycles += cycles_count_stop();
 
-            //cycles_count_start();
-            //bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
+            /*cycles_count_start();
+            bin_update_conv_ws_bs(&fil_w, &fil_bin_w, alphas, &fil_b, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
+            update_conv_weights_cycles += cycles_count_stop();*/
+
 
             cycles_count_start();
-            bin_update_conv_ws_bs(&fil_w, &fil_bin_w, alphas, &fil_b, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
+            bin_update_conv_weights(&fil_w, &fil_bin_w, alphas, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
             update_conv_weights_cycles += cycles_count_stop();
 
-            /*cycles_count_start();
+            cycles_count_start();
             update_conv_biases(&fil_b, &del_conv, &conv_t);
-            update_conv_biases_cycles += cycles_count_stop();*/
+            update_conv_biases_cycles += cycles_count_stop();
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
@@ -381,13 +393,16 @@ void binary_net()
 
 
         bp_softmax_to_conv_cycles     /= N_BATCHES;
+        bp_soft_to_pool_cycles        /= N_BATCHES;
+        bp_pool_to_conv_cycles        /= N_BATCHES;
         update_softmax_weights_cycles /= N_BATCHES;
         update_softmax_biases_cycles  /= N_BATCHES;
         update_conv_weights_cycles    /= N_BATCHES;
         update_conv_biases_cycles     /= N_BATCHES;
 
-        backward_cycles = (bp_softmax_to_conv_cycles + update_softmax_weights_cycles + update_softmax_biases_cycles
-            + update_conv_weights_cycles + update_conv_biases_cycles);
+        backward_cycles = (bp_softmax_to_conv_cycles + bp_soft_to_pool_cycles + bp_pool_to_conv_cycles
+                        + update_softmax_weights_cycles + update_softmax_biases_cycles
+                        + update_conv_weights_cycles + update_conv_biases_cycles);
 
         total_cycles = forward_cycles + backward_cycles;
 
@@ -400,6 +415,8 @@ void binary_net()
         printf("soft_cycles           : %.2f\n\n", soft_cycles);
 
         printf("bp_soft_to_conv       : %.2f\n", bp_softmax_to_conv_cycles);
+        printf("bp_soft_to_pool       : %.2f\n", bp_soft_to_pool_cycles);
+        printf("bp_pool_to_conv       : %.2f\n", bp_pool_to_conv_cycles);
         printf("update_softmax_weights: %.2f\n", update_softmax_weights_cycles);
         printf("update_softmax_biases : %.2f\n", update_softmax_biases_cycles);
         printf("update_conv_weights   : %.2f\n", update_conv_weights_cycles);
@@ -462,10 +479,19 @@ void xnor_net()
 
             // ------------------------------------------------back propagation--------------------------------
 
-            cycles_count_start();
+            /*cycles_count_start();
             bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index, 
                                 pool_index_i, pool_index_j);
-            bp_softmax_to_conv_cycles += cycles_count_stop();
+            bp_softmax_to_conv_cycles += cycles_count_stop();*/
+
+
+            cycles_count_start();
+            bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
+            bp_soft_to_pool_cycles += cycles_count_stop();
+
+            cycles_count_start();
+            bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
+            bp_pool_to_conv_cycles += cycles_count_stop();
 
             // update weights and biases
             cycles_count_start();
@@ -476,9 +502,17 @@ void xnor_net()
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
             update_softmax_biases_cycles += cycles_count_stop();
 
-            cycles_count_start();
+            /*cycles_count_start();
             bin_update_conv_ws_bs(&fil_w, &fil_bin_w, alphas, &fil_b, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
+            update_conv_weights_cycles += cycles_count_stop();*/
+
+            cycles_count_start();
+            bin_update_conv_weights(&fil_w, &fil_bin_w, alphas, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
             update_conv_weights_cycles += cycles_count_stop();
+
+            cycles_count_start();
+            update_conv_biases(&fil_b, &del_conv, &conv_t);
+            update_conv_biases_cycles += cycles_count_stop();
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
@@ -510,13 +544,16 @@ void xnor_net()
 
 
         bp_softmax_to_conv_cycles     /= N_BATCHES;
+        bp_soft_to_pool_cycles        /= N_BATCHES;
+        bp_pool_to_conv_cycles        /= N_BATCHES;
         update_softmax_weights_cycles /= N_BATCHES;
         update_softmax_biases_cycles  /= N_BATCHES;
         update_conv_weights_cycles    /= N_BATCHES;
         update_conv_biases_cycles     /= N_BATCHES;
 
-        backward_cycles = (bp_softmax_to_conv_cycles + update_softmax_weights_cycles + update_softmax_biases_cycles
-            + update_conv_weights_cycles + update_conv_biases_cycles);
+        backward_cycles = (bp_softmax_to_conv_cycles + bp_soft_to_pool_cycles + bp_pool_to_conv_cycles 
+                            + update_softmax_weights_cycles + update_softmax_biases_cycles
+                            + update_conv_weights_cycles + update_conv_biases_cycles);
 
         total_cycles = forward_cycles + backward_cycles;
 
@@ -530,6 +567,8 @@ void xnor_net()
         printf("soft_cycles           : %.2f\n\n", soft_cycles);
 
         printf("bp_soft_to_conv       : %.2f\n", bp_softmax_to_conv_cycles);
+        printf("bp_soft_to_pool       : %.2f\n", bp_soft_to_pool_cycles);
+        printf("bp_pool_to_conv       : %.2f\n", bp_pool_to_conv_cycles);
         printf("update_softmax_weights: %.2f\n", update_softmax_weights_cycles);
         printf("update_softmax_biases : %.2f\n", update_softmax_biases_cycles);
         printf("update_conv_weights   : %.2f\n", update_conv_weights_cycles);
@@ -614,9 +653,12 @@ double bin_validate(){
     int correct_preds = 0;
     for (int i = NUM_TRAIN; i+1 < NUM_TRAIN + NUM_VAL; i=i+2)
         {
-            bin_convolution(&input_images, &conv_t, &pool_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index,
-                                pool_index_i, pool_index_j);
-            //max_pooling(&conv_t, &pool_t, NULL, NULL, 2, 'V');
+            /*bin_convolution(&input_images, &conv_t, &pool_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index,
+                                pool_index_i, pool_index_j);*/
+
+            bin_convolution(&input_images, &conv_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index);
+
+            max_pooling(&conv_t, &pool_t, NULL, NULL, 2, 'V');
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 2);
             softmax(&fully_con_out, &softmax_out, pred, 2);
 

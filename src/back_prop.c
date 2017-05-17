@@ -72,7 +72,7 @@ double MULTIPLIER;
 }*/
 
 // batches in outermost loop
-void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+/*void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
 {
 	int true_label;
 
@@ -123,16 +123,16 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 
 		true_label = labels[shuffle_index[base+b]];
 
-		softmax_out_0 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 0)];
-		softmax_out_1 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 1)];
-		softmax_out_2 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 2)];
-		softmax_out_3 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 3)];
-		softmax_out_4 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 4)];
-		softmax_out_5 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 5)];
-		softmax_out_6 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 6)];
-		softmax_out_7 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 7)];
-		softmax_out_8 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 8)];
-		softmax_out_9 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 9)];
+		softmax_out_0 = (softmax_out->data)[ind_softmax_out(b, 0)];
+		softmax_out_1 = (softmax_out->data)[ind_softmax_out(b, 1)];
+		softmax_out_2 = (softmax_out->data)[ind_softmax_out(b, 2)];
+		softmax_out_3 = (softmax_out->data)[ind_softmax_out(b, 3)];
+		softmax_out_4 = (softmax_out->data)[ind_softmax_out(b, 4)];
+		softmax_out_5 = (softmax_out->data)[ind_softmax_out(b, 5)];
+		softmax_out_6 = (softmax_out->data)[ind_softmax_out(b, 6)];
+		softmax_out_7 = (softmax_out->data)[ind_softmax_out(b, 7)];
+		softmax_out_8 = (softmax_out->data)[ind_softmax_out(b, 8)];
+		softmax_out_9 = (softmax_out->data)[ind_softmax_out(b, 9)];
 
 		delta0 = softmax_out_0 - (true_label == 0);
 		delta1 = softmax_out_1 - (true_label == 1);
@@ -151,9 +151,9 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 			{
 				INCREMENT_FLOPS(60)
 
-				mat_val_f0 = (pool_t->data)[offset(pool_t, b, c, r, 0)];
-				mat_val_f1 = (pool_t->data)[offset(pool_t, b, c, r, 1)];
-				mat_val_f2 = (pool_t->data)[offset(pool_t, b, c, r, 2)];
+				mat_val_f0 = (pool_t->data)[ind_pool_out(b, 0, r, c)];
+				mat_val_f1 = (pool_t->data)[ind_pool_out(b, 1, r, c)];
+				mat_val_f2 = (pool_t->data)[ind_pool_out(b, 2, r, c)];
 
 				delta_ws[r][c][0][0] += delta0 * mat_val_f0;
 				delta_ws[r][c][0][1] += delta1 * mat_val_f0;
@@ -201,45 +201,79 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 				INCREMENT_FLOPS(60)
 
 				// ---------------------------------------Filter 0-------------------------------------------
-				(fully_con_w->data)[offset(fully_con_w, 0, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][0];
-				(fully_con_w->data)[offset(fully_con_w, 1, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][1];
-				(fully_con_w->data)[offset(fully_con_w, 2, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][2];
-				(fully_con_w->data)[offset(fully_con_w, 3, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][3];
-				(fully_con_w->data)[offset(fully_con_w, 4, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][4];
-				(fully_con_w->data)[offset(fully_con_w, 5, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][5];
-				(fully_con_w->data)[offset(fully_con_w, 6, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][6];
-				(fully_con_w->data)[offset(fully_con_w, 7, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][7];
-				(fully_con_w->data)[offset(fully_con_w, 8, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][8];
-				(fully_con_w->data)[offset(fully_con_w, 9, c, r, 0)] -= MULTIPLIER*delta_ws[r][c][0][9];
+				(fully_con_w->data)[ind_fully_con_w(0, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][0];
+				(fully_con_w->data)[ind_fully_con_w(1, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][1];
+				(fully_con_w->data)[ind_fully_con_w(2, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][2];
+				(fully_con_w->data)[ind_fully_con_w(3, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][3];
+				(fully_con_w->data)[ind_fully_con_w(4, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][4];
+				(fully_con_w->data)[ind_fully_con_w(5, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][5];
+				(fully_con_w->data)[ind_fully_con_w(6, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][6];
+				(fully_con_w->data)[ind_fully_con_w(7, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][7];
+				(fully_con_w->data)[ind_fully_con_w(8, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][8];
+				(fully_con_w->data)[ind_fully_con_w(9, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][9];
 
 				// ---------------------------------------Filter 1-------------------------------------------
-				(fully_con_w->data)[offset(fully_con_w, 0, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][0];
-				(fully_con_w->data)[offset(fully_con_w, 1, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][1];
-				(fully_con_w->data)[offset(fully_con_w, 2, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][2];
-				(fully_con_w->data)[offset(fully_con_w, 3, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][3];
-				(fully_con_w->data)[offset(fully_con_w, 4, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][4];
-				(fully_con_w->data)[offset(fully_con_w, 5, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][5];
-				(fully_con_w->data)[offset(fully_con_w, 6, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][6];
-				(fully_con_w->data)[offset(fully_con_w, 7, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][7];
-				(fully_con_w->data)[offset(fully_con_w, 8, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][8];
-				(fully_con_w->data)[offset(fully_con_w, 9, c, r, 1)] -= MULTIPLIER*delta_ws[r][c][1][9];
+				(fully_con_w->data)[ind_fully_con_w(0, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][0];
+				(fully_con_w->data)[ind_fully_con_w(1, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][1];
+				(fully_con_w->data)[ind_fully_con_w(2, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][2];
+				(fully_con_w->data)[ind_fully_con_w(3, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][3];
+				(fully_con_w->data)[ind_fully_con_w(4, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][4];
+				(fully_con_w->data)[ind_fully_con_w(5, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][5];
+				(fully_con_w->data)[ind_fully_con_w(6, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][6];
+				(fully_con_w->data)[ind_fully_con_w(7, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][7];
+				(fully_con_w->data)[ind_fully_con_w(8, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][8];
+				(fully_con_w->data)[ind_fully_con_w(9, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][9];
 
 				// ---------------------------------------Filter 2-------------------------------------------
-				(fully_con_w->data)[offset(fully_con_w, 0, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][0];
-				(fully_con_w->data)[offset(fully_con_w, 1, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][1];
-				(fully_con_w->data)[offset(fully_con_w, 2, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][2];
-				(fully_con_w->data)[offset(fully_con_w, 3, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][3];
-				(fully_con_w->data)[offset(fully_con_w, 4, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][4];
-				(fully_con_w->data)[offset(fully_con_w, 5, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][5];
-				(fully_con_w->data)[offset(fully_con_w, 6, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][6];
-				(fully_con_w->data)[offset(fully_con_w, 7, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][7];
-				(fully_con_w->data)[offset(fully_con_w, 8, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][8];
-				(fully_con_w->data)[offset(fully_con_w, 9, c, r, 2)] -= MULTIPLIER*delta_ws[r][c][2][9];
+				(fully_con_w->data)[ind_fully_con_w(0, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][0];
+				(fully_con_w->data)[ind_fully_con_w(1, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][1];
+				(fully_con_w->data)[ind_fully_con_w(2, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][2];
+				(fully_con_w->data)[ind_fully_con_w(3, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][3];
+				(fully_con_w->data)[ind_fully_con_w(4, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][4];
+				(fully_con_w->data)[ind_fully_con_w(5, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][5];
+				(fully_con_w->data)[ind_fully_con_w(6, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][6];
+				(fully_con_w->data)[ind_fully_con_w(7, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][7];
+				(fully_con_w->data)[ind_fully_con_w(8, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][8];
+				(fully_con_w->data)[ind_fully_con_w(9, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][9];
+		}
+	}
+}*/
+
+// No unrolling
+void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+{
+	int cur_label;
+
+	for (int d = 0; d < N_DIGS; ++d)
+	{
+		for (int f = 0; f < NUM_FILS; ++f)
+		{
+			for (int r = 0; r < N_ROWS_POOL; ++r)
+			{
+				for (int c = 0; c < N_COLS_POOL; ++c)
+				{
+					double delta_w = 0.0, delta = 0.0;
+					for (int b = 0; b < BATCH_SIZE; ++b)
+					{
+						INCREMENT_FLOPS(3)
+
+						cur_label = labels[shuffle_index[base+b]];
+
+						delta = softmax_out->data[ind_softmax_out(b, d)] - (cur_label == d);
+						delta_w += delta * pool_t->data[ind_pool_out(b, f, r, c)];
+					}
+
+					INCREMENT_FLOPS(2)
+
+					(fully_con_w->data)[ind_fully_con_w(d, f, r, c)] -= MULTIPLIER*delta_w;
+				}
+			}
 		}
 	}
 }
 
-void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels, int base, int shuffle_index[])
+// loop on digits unrolled
+/*void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels, int base, int shuffle_index[])
 {
 	double delta0=0, delta1=0, delta2=0, delta3=0, delta4=0, delta5=0, delta6=0, delta7=0, delta8=0, delta9=0;
 	double delta00=0, delta11=0, delta22=0, delta33=0, delta44=0, delta55=0, delta66=0, delta77=0, delta88=0, delta99=0;
@@ -252,30 +286,30 @@ void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels,
 
 		true_label1 = labels[shuffle_index[base+b]];
 
-		delta0 += softmax_out->data[offset(softmax_out, b, 0, 0, 0)] - (true_label1 == 0);
-		delta1 += softmax_out->data[offset(softmax_out, b, 0, 0, 1)] - (true_label1 == 1);
-		delta2 += softmax_out->data[offset(softmax_out, b, 0, 0, 2)] - (true_label1 == 2);
-		delta3 += softmax_out->data[offset(softmax_out, b, 0, 0, 3)] - (true_label1 == 3);
-		delta4 += softmax_out->data[offset(softmax_out, b, 0, 0, 4)] - (true_label1 == 4);
-		delta5 += softmax_out->data[offset(softmax_out, b, 0, 0, 5)] - (true_label1 == 5);
-		delta6 += softmax_out->data[offset(softmax_out, b, 0, 0, 6)] - (true_label1 == 6);
-		delta7 += softmax_out->data[offset(softmax_out, b, 0, 0, 7)] - (true_label1 == 7);
-		delta8 += softmax_out->data[offset(softmax_out, b, 0, 0, 8)] - (true_label1 == 8);
-		delta9 += softmax_out->data[offset(softmax_out, b, 0, 0, 9)] - (true_label1 == 9);
+		delta0 += softmax_out->data[ind_softmax_out(b, 0)] - (true_label1 == 0);
+		delta1 += softmax_out->data[ind_softmax_out(b, 1)] - (true_label1 == 1);
+		delta2 += softmax_out->data[ind_softmax_out(b, 2)] - (true_label1 == 2);
+		delta3 += softmax_out->data[ind_softmax_out(b, 3)] - (true_label1 == 3);
+		delta4 += softmax_out->data[ind_softmax_out(b, 4)] - (true_label1 == 4);
+		delta5 += softmax_out->data[ind_softmax_out(b, 5)] - (true_label1 == 5);
+		delta6 += softmax_out->data[ind_softmax_out(b, 6)] - (true_label1 == 6);
+		delta7 += softmax_out->data[ind_softmax_out(b, 7)] - (true_label1 == 7);
+		delta8 += softmax_out->data[ind_softmax_out(b, 8)] - (true_label1 == 8);
+		delta9 += softmax_out->data[ind_softmax_out(b, 9)] - (true_label1 == 9);
 
 
 		true_label2 = labels[shuffle_index[base+b+1]];
 
-		delta00 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 0)] - (true_label2 == 0);
-		delta11 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 1)] - (true_label2 == 1);
-		delta22 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 2)] - (true_label2 == 2);
-		delta33 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 3)] - (true_label2 == 3);
-		delta44 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 4)] - (true_label2 == 4);
-		delta55 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 5)] - (true_label2 == 5);
-		delta66 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 6)] - (true_label2 == 6);
-		delta77 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 7)] - (true_label2 == 7);
-		delta88 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 8)] - (true_label2 == 8);
-		delta99 += softmax_out->data[offset(softmax_out, b+1, 0, 0, 9)] - (true_label2 == 9);
+		delta00 += softmax_out->data[ind_softmax_out(b+1, 0)] - (true_label2 == 0);
+		delta11 += softmax_out->data[ind_softmax_out(b+1, 1)] - (true_label2 == 1);
+		delta22 += softmax_out->data[ind_softmax_out(b+1, 2)] - (true_label2 == 2);
+		delta33 += softmax_out->data[ind_softmax_out(b+1, 3)] - (true_label2 == 3);
+		delta44 += softmax_out->data[ind_softmax_out(b+1, 4)] - (true_label2 == 4);
+		delta55 += softmax_out->data[ind_softmax_out(b+1, 5)] - (true_label2 == 5);
+		delta66 += softmax_out->data[ind_softmax_out(b+1, 6)] - (true_label2 == 6);
+		delta77 += softmax_out->data[ind_softmax_out(b+1, 7)] - (true_label2 == 7);
+		delta88 += softmax_out->data[ind_softmax_out(b+1, 8)] - (true_label2 == 8);
+		delta99 += softmax_out->data[ind_softmax_out(b+1, 9)] - (true_label2 == 9);
 
 	}
 
@@ -291,19 +325,42 @@ void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels,
 	delta8 += delta88;
 	delta9 += delta99;
 
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 0)] -= MULTIPLIER*delta0;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 1)] -= MULTIPLIER*delta1;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 2)] -= MULTIPLIER*delta2;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 3)] -= MULTIPLIER*delta3;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 4)] -= MULTIPLIER*delta4;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 5)] -= MULTIPLIER*delta5;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 6)] -= MULTIPLIER*delta6;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 7)] -= MULTIPLIER*delta7;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 8)] -= MULTIPLIER*delta8;
-	(fully_con_b->data)[offset(fully_con_b, 0, 0, 0, 9)] -= MULTIPLIER*delta9;
+	(fully_con_b->data)[0] -= MULTIPLIER*delta0;
+	(fully_con_b->data)[1] -= MULTIPLIER*delta1;
+	(fully_con_b->data)[2] -= MULTIPLIER*delta2;
+	(fully_con_b->data)[3] -= MULTIPLIER*delta3;
+	(fully_con_b->data)[4] -= MULTIPLIER*delta4;
+	(fully_con_b->data)[5] -= MULTIPLIER*delta5;
+	(fully_con_b->data)[6] -= MULTIPLIER*delta6;
+	(fully_con_b->data)[7] -= MULTIPLIER*delta7;
+	(fully_con_b->data)[8] -= MULTIPLIER*delta8;
+	(fully_con_b->data)[9] -= MULTIPLIER*delta9;
+}*/
+
+// No unrolling
+void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels, int base, int shuffle_index[]){
+
+	for (int d = 0; d < N_DIGS; ++d)
+	{
+		double delta_b = 0.0, delta = 0.0;
+		for (int b = 0; b < BATCH_SIZE; ++b)
+		{
+
+			INCREMENT_FLOPS(2)
+
+			delta = softmax_out->data[ind_softmax_out(b, d)] - (labels[shuffle_index[base+b]] == d);
+			delta_b += delta;
+		}
+
+		INCREMENT_FLOPS(2)
+
+		(fully_con_b->data)[d] -= MULTIPLIER*delta_b;
+
+	}
 }
 
-void bp_softmax_to_maxpool(tensor* del_max_pool, tensor* softmax_out, int* labels, int base, tensor* fully_con_w, int shuffle_index[])
+// loop on digits unrolled
+/*void bp_softmax_to_maxpool(tensor* del_max_pool, tensor* softmax_out, int* labels, int base, tensor* fully_con_w, int shuffle_index[])
 {
 	double sum0, sum1, sum2, sum3, sum4, sum5, sum6, sum7, sum8, sum9;
 	double sum01, sum23, sum45, sum67, sum89;
@@ -373,8 +430,46 @@ void bp_softmax_to_maxpool(tensor* del_max_pool, tensor* softmax_out, int* label
 			}
 		}
 	}
+}*/
+
+// No unrolling
+void bp_softmax_to_maxpool(tensor* del_max_pool, tensor* softmax_out, int* labels, int base, tensor* fully_con_w, int shuffle_index[]){
+	double sum = 0.0;
+	double delta = 0.0;
+	int cur_label;
+
+	for (int b = 0; b < BATCH_SIZE; ++b)
+	{
+
+		cur_label = labels[shuffle_index[base+b]];
+
+		for (int f = 0; f < NUM_FILS; ++f)
+		{
+			for (int r = 0; r < N_ROWS_POOL; ++r)
+			{
+				for (int c = 0; c < N_COLS_POOL; ++c)
+				{
+					sum = 0.0;
+
+					for (int d = 0; d < N_DIGS; ++d)
+					{
+
+						INCREMENT_FLOPS(3)
+
+						delta = (softmax_out->data)[ind_softmax_out(b, d)] - (cur_label == d);
+
+						sum += delta * (fully_con_w->data)[ind_fully_con_w(d, f, r, c)];
+					}
+
+					(del_max_pool->data)[ind_pool_out(b, f, r, c)] = sum;
+
+				}
+			}
+		}
+	}
 }
 
+// No unrolling
 void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, int pool_index_i[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL],
    	int pool_index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
@@ -386,12 +481,15 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 			{
 				for (int c = 0; c < N_COLS_POOL; ++c)
 				{
+
+					INCREMENT_FLOPS(1)
+
 					int row = pool_index_i[b][f][r][c];
 					int col = pool_index_j[b][f][r][c];
 
-					if (conv_t->data[offset(conv_t, b, row, col, f)] > 0.0)
+					if ( (conv_t->data)[ind_conv_out(b, f, row, col)] > 0.0)
 					{
-						(del_conv->data)[offset(del_conv, b, col, row, f)] = (del_max_pool->data)[offset(del_max_pool, b, c, r, f)];
+						(del_conv->data)[ind_conv_out(b, f, row, col)] = (del_max_pool->data)[ind_pool_out(b, f, r, c)];
 					}
 				}
 			}
@@ -425,16 +523,16 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 	{
 		int cur_label = labels[shuffle_index[base+b]];
 
-		softmax_out_0 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 0)];
-		softmax_out_1 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 1)];
-		softmax_out_2 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 2)];
-		softmax_out_3 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 3)];
-		softmax_out_4 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 4)];
-		softmax_out_5 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 5)];
-		softmax_out_6 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 6)];
-		softmax_out_7 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 7)];
-		softmax_out_8 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 8)];
-		softmax_out_9 = (softmax_out->data)[offset(softmax_out, b, 0, 0, 9)];
+		softmax_out_0 = (softmax_out->data)[ind_softmax_out(b, 0)];
+		softmax_out_1 = (softmax_out->data)[ind_softmax_out(b, 1)];
+		softmax_out_2 = (softmax_out->data)[ind_softmax_out(b, 2)];
+		softmax_out_3 = (softmax_out->data)[ind_softmax_out(b, 3)];
+		softmax_out_4 = (softmax_out->data)[ind_softmax_out(b, 4)];
+		softmax_out_5 = (softmax_out->data)[ind_softmax_out(b, 5)];
+		softmax_out_6 = (softmax_out->data)[ind_softmax_out(b, 6)];
+		softmax_out_7 = (softmax_out->data)[ind_softmax_out(b, 7)];
+		softmax_out_8 = (softmax_out->data)[ind_softmax_out(b, 8)];
+		softmax_out_9 = (softmax_out->data)[ind_softmax_out(b, 9)];
 
 		for (int f = 0; f < NUM_FILS; ++f)
 		{
@@ -456,16 +554,16 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 					delta8 = softmax_out_8 - (cur_label == 8);
 					delta9 = softmax_out_9 - (cur_label == 9);
 
-					w0 = (fully_con_w->data)[offset(fully_con_w, 0, c, r, f)];
-					w1 = (fully_con_w->data)[offset(fully_con_w, 1, c, r, f)];
-					w2 = (fully_con_w->data)[offset(fully_con_w, 2, c, r, f)];
-					w3 = (fully_con_w->data)[offset(fully_con_w, 3, c, r, f)];
-					w4 = (fully_con_w->data)[offset(fully_con_w, 4, c, r, f)];
-					w5 = (fully_con_w->data)[offset(fully_con_w, 5, c, r, f)];
-					w6 = (fully_con_w->data)[offset(fully_con_w, 6, c, r, f)];
-					w7 = (fully_con_w->data)[offset(fully_con_w, 7, c, r, f)];
-					w8 = (fully_con_w->data)[offset(fully_con_w, 8, c, r, f)];
-					w9 = (fully_con_w->data)[offset(fully_con_w, 9, c, r, f)];
+					w0 = (fully_con_w->data)[ind_fully_con_w(0, f, r, c)];
+					w1 = (fully_con_w->data)[ind_fully_con_w(1, f, r, c)];
+					w2 = (fully_con_w->data)[ind_fully_con_w(2, f, r, c)];
+					w3 = (fully_con_w->data)[ind_fully_con_w(3, f, r, c)];
+					w4 = (fully_con_w->data)[ind_fully_con_w(4, f, r, c)];
+					w5 = (fully_con_w->data)[ind_fully_con_w(5, f, r, c)];
+					w6 = (fully_con_w->data)[ind_fully_con_w(6, f, r, c)];
+					w7 = (fully_con_w->data)[ind_fully_con_w(7, f, r, c)];
+					w8 = (fully_con_w->data)[ind_fully_con_w(8, f, r, c)];
+					w9 = (fully_con_w->data)[ind_fully_con_w(9, f, r, c)];
 
 					sum0 = delta0 * w0;
 					sum1 = delta1 * w1;
@@ -494,9 +592,9 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 					int row = pool_index_i[b][f][r][c];
 					int col = pool_index_j[b][f][r][c];
 
-					if (conv_t->data[offset(conv_t, b, col, row, f)] > 0.0)
+					if (conv_t->data[ind_conv_out(b, f, row, col)] > 0.0)
 					{
-						(del_conv->data)[offset(del_conv, b, col, row, f)] = sum_fin;
+						(del_conv->data)[ind_conv_out(b, f, row, col)] = sum_fin;
 					}
 
 				}
@@ -760,12 +858,17 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 	}
 }
 
-/*void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+// No unrolling
+void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
 								tensor* input_images, int base, int shuffle_index[])
 {
 	INCREMENT_FLOPS(2)
 	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
 	double delta_w;
+	double conv_val;
+	double del_conv_val;
+	double input_pixel;
+	double weight;
 	int cur_image;
 
 	for (int f = 0; f < NUM_FILS; ++f)
@@ -774,49 +877,53 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 		{
 			for (int c = 0; c < FIL_COLS; ++c)
 			{
-                for(int d = 0; d < FIL_DEPTH; ++d)
-                {
-				    delta_w = 0.0;
+ 
+			    delta_w = 0.0;
 
-				    for (int b = 0; b < BATCH_SIZE; ++b)
-				    {
-				    	cur_image = shuffle_index[b+base];
-		    			for (int i = 0; i < N_ROWS_CONV; ++i)
-		    			{
-		    				for (int j = 0; j < N_COLS_CONV; ++j)
-		    				{
-		    					INCREMENT_FLOPS(3)
+			    for (int b = 0; b < BATCH_SIZE; ++b)
+			    {
+			    	cur_image = shuffle_index[b+base];
+	    			for (int i = 0; i < N_ROWS_CONV; ++i)
+	    			{
+	    				for (int j = 0; j < N_COLS_CONV; ++j)
+	    				{
+	    					INCREMENT_FLOPS(3)
 
-		    					if( (conv_t->data)[offset(conv_t, b, j  , i, f)] > 0.0 )
-		    					{
-		    						delta_w += (del_conv->data)[offset(del_conv, b, j, i, f)]*
-		    								(input_images->data)[offset(input_images, cur_image, j+c, i+r, 0)];
-		    					}
-		    				}
-		    			}
-				    }
+	    					conv_val     =   (conv_t->data)[ind_conv_out(b, f, i, j)];
+	    					del_conv_val = (del_conv->data)[ind_conv_out(b, f, i, j)];
+	    					input_pixel  = (input_images->data)[ind_input_img(cur_image, i+r, j+c)];
 
-				    INCREMENT_FLOPS(7)
-				    // modifying delta_w to account for sign function applied on weights
-				    double weight = (fil_w->data)[offset(fil_w, f, r, c, d)];
-				    if (weight <= 1 && weight >= -1)
-				    {
-				    	delta_w *= ( (alphas[f]*weight) +  recip_n );
-				    }
-				    else
-			    	{
-			    		delta_w *= recip_n;
-			    	}
-				    
-				    (fil_w->data)[offset(fil_w, f, r, c, d)] = weight - MULTIPLIER*delta_w;
-                }
+	    					if( conv_val > 0.0 )
+	    					{
+	    						delta_w += del_conv_val*input_pixel;
+	    					}
+	    				}
+	    			}
+			    }
+
+			    INCREMENT_FLOPS(7)
+
+			    // modifying delta_w to account for sign function applied on weights
+			    weight = (fil_w->data)[ind_fil_w(f, r, c)];
+
+			    if (weight <= 1 && weight >= -1)
+			    {
+			    	delta_w *= ( (alphas[f]*weight) +  recip_n );
+			    }
+			    else
+		    	{
+		    		delta_w *= recip_n;
+		    	}
+			    
+			    (fil_w->data)[ind_fil_w(f, r, c)] = weight - MULTIPLIER*delta_w;
+                
 			}
 		}
 	}
-}*/
+}
 
-/*// unroll fil rows and cols
-void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+// unroll fil rows and cols
+/*void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
 								tensor* input_images, int base, int shuffle_index[])
 {
 	INCREMENT_FLOPS(2)
@@ -1526,9 +1633,12 @@ void bin_update_conv_ws_bs(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_F
 	(fil_b->data)[offset(fil_b, 2, 0, 0, 0)] -= MULTIPLIER*delta_b2;
 }
 
+// No unrolling
 void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 {
 	double delta_b;
+	double conv_val;
+	double del_conv_val;
 
 	for (int f = 0; f < NUM_FILS; ++f)
 	{
@@ -1542,14 +1652,18 @@ void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 				{
 					INCREMENT_FLOPS(2)
 
-					if(conv_t->data[offset(conv_t, b, j, i, f)] > 0.0){
-						delta_b	+= del_conv->data[offset(del_conv, b, j, i, f)];
+					conv_val = conv_t->data[ind_conv_out(b, f, i, j)];
+					del_conv_val = del_conv->data[ind_conv_out(b, f, i, j)];
+
+					if(conv_val > 0.0)
+					{
+						delta_b	+= del_conv_val;
 					}
 				}
 			}
 		}
 
 		INCREMENT_FLOPS(2)
-		(fil_b->data)[offset(fil_b, f, 0, 0, 0)] -= MULTIPLIER*delta_b;
+		(fil_b->data)[f] -= MULTIPLIER*delta_b;
 	}
 }
