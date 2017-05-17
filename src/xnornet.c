@@ -137,6 +137,8 @@ void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE
 				{
 					for (int c = 0; c < FIL_COLS; ++c)
 					{
+						INCREMENT_FLOPS(3)
+
 						double mat_val = (input_images->data)[offset(input_images, shuffle_index[b+base], j+c, i+r, 0)];
 
 						if (mat_val < 0.0)
@@ -147,6 +149,8 @@ void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE
 						sum += mat_val;
 					}
 				}
+
+				INCREMENT_FLOPS(1)
 
 				betas[b][i][j] = sum/n;
 			}
@@ -159,6 +163,8 @@ void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE
 		{
 			for (int c = 0; c < IMAGE_COLS; ++c)
 			{
+				INCREMENT_FLOPS(1)
+
 				double mat_val = (input_images->data)[offset(input_images, shuffle_index[b+base], c, r, 0)];
 
 				if (mat_val < 0.0)

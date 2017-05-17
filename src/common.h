@@ -10,7 +10,7 @@
 #define POOL_DIM 2
 #define N_DIGS 10
 #define LEARN_RATE 0.01
-#define BINARY_NET 1
+#define BINARY_NET 2
 //#define COUNT_FLOPS
 
 // conditional compilation of flop counts
@@ -26,8 +26,8 @@
 #define NUM_EPOCHS 				20
 #define COUNT_BATCHES			NUM_TRAIN/BATCH_SIZE
 #define INCREMENT_FLOPS(i)		;
-#define PRINT_FLOPS()  			printf("Total flops=2042265\n"); 
-#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*2042265/cycles);
+#define PRINT_FLOPS()  			printf("Total flops=3010585\n"); 
+#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*3010585/cycles);
 
 #endif
 

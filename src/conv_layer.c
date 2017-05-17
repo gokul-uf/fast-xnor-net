@@ -716,6 +716,7 @@ double xnor_convolve(int t[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BAT
 	{
 		for (int j = 0; j < FIL_COLS; ++j)
 		{
+			INCREMENT_FLOPS(2)
 
 			// XNOR operation
 			//conv_val += ( t[batch][i+r][j+c] == fil_bin_w[f][i][j] );
@@ -723,6 +724,8 @@ double xnor_convolve(int t[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BAT
 			conv_val += ( t[batch][i+r][j+c] * fil_bin_w[f][i][j] );
 		}
 	}
+
+	INCREMENT_FLOPS(4)
 
 	conv_val *= alphas[f]*betas[batch][r][c];
 
