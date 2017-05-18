@@ -12,7 +12,7 @@ double convolve(tensor* t, int r, int c, int image_num, tensor* fil_w, tensor* f
 double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS],
 	tensor fil_b, int f, int shuffle_index[]);
 
-/*ouble xnor_convolve(int t[NUM_IMAGES][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
+/*double xnor_convolve(int t[NUM_IMAGES][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
 						int r, int c, int b, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
 						double alphas[NUM_FILS], tensor fil_b, int f);*/
 

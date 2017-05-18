@@ -462,12 +462,13 @@ void xnor_net()
             bin_activ_cycles += cycles_count_stop();
 
             cycles_count_start();
-            xnor_convolution(bin_input_images, betas, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index); 
+            xnor_convolve_pool(bin_input_images, betas, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, 
+                                &pool_t, pool_index_i, pool_index_j); 
             conv_cycles += cycles_count_stop();           
 
-            cycles_count_start();
+            /*cycles_count_start();
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
-            pool_cycles += cycles_count_stop();
+            pool_cycles += cycles_count_stop();*/
 
             cycles_count_start();
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
@@ -677,10 +678,12 @@ double xnor_validate(){
             // calculate betas
             bin_activation(&input_images, bin_input_images, shuffle_index, betas, 1, i);
 
-            xnor_convolution(bin_input_images, betas, &conv_t, 1, fil_bin_w, alphas, fil_b, i, shuffle_index);
+            xnor_convolve_pool_validation(bin_input_images, betas, &conv_t, 1, fil_bin_w, alphas, fil_b, &pool_t);
 
-            max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
+            //max_pooling(&conv_t, &pool_t, NULL, NULL, 1, 'V');
+
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 1);
+
             softmax(&fully_con_out, &softmax_out, pred, 1);
 
             correct_preds += (labels[shuffle_index[i]] == pred[0]);

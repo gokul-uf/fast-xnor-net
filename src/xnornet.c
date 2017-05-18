@@ -131,6 +131,7 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 }
 
 // absolute values of input pixels first stored in another array, loop on filter rows and cols unrolled by 2
+
 /*void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], int shuffle_index[], 
 					double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], int batch_size, int base)
 {
@@ -222,7 +223,8 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 			}
 		}
 	}
-}*/
+}
+*/
 
 // using previous loads to reduce loading more data
 void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], int shuffle_index[], 

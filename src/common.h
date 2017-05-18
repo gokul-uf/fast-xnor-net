@@ -29,8 +29,8 @@
 #define NUM_EPOCHS 				20
 #define COUNT_BATCHES			NUM_TRAIN/BATCH_SIZE
 #define INCREMENT_FLOPS(i)		;
-#define PRINT_FLOPS()  			printf("Total flops=2780815\n"); 
-#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*2780815/cycles);
+#define PRINT_FLOPS()  			printf("Total flops=2776495\n"); 
+#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*2776495/cycles);
 
 #endif
 

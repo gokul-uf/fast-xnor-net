@@ -584,9 +584,11 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 	}
 }*/
 
+// loop on conv rows and cols unrolled by 2, max-pooling done, pool indexes saved
 void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], 
-						tensor* conv_t, int batch_size, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
-						double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[])
+					tensor* conv_t, int batch_size, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
+					double alphas[NUM_FILS], tensor fil_b, tensor* pool_t, 
+					int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
 	double conv_val0, conv_val1, conv_val2, conv_val3;
 	double alpha, bias;
@@ -600,6 +602,11 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 	double input_pixel2;
 	double input_pixel3;
 
+	int pool_i, pool_j;
+	int max_pool_1, max_pool_2, max_pool;
+	int    ind_1_i,    ind_2_i,    ind_i;
+	int    ind_1_j,    ind_2_j,    ind_j;
+
 	for (int b = 0; b < batch_size; ++b)
 	{
 
@@ -609,10 +616,10 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 			alpha = alphas[f];
 			bias = fil_b.data[f];
 
-			for (int r = 0; r+1 < N_ROWS_CONV; r=r+2)
+			for (int r = 0, pool_i = 0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
 			{
 
-				for (int c = 0; c+1 < N_COLS_CONV; c=c+2)
+				for (int c = 0, pool_j = 0; c+1 < N_COLS_CONV; c=c+2, ++pool_j)
 				{
 
 					beta0 = betas[b][r  ][c  ];
@@ -693,6 +700,206 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 					(conv_t->data)[ind_conv_out(b, f, r  , c+1)] = conv_val1;
 					(conv_t->data)[ind_conv_out(b, f, r+1, c  )] = conv_val2;
 					(conv_t->data)[ind_conv_out(b, f, r+1, c+1)] = conv_val3;
+
+
+					// ----------------------------------------------Max pooling---------------------------------------
+
+					INCREMENT_FLOPS(3)
+
+					if (conv_val0 > conv_val1)
+					{
+						max_pool_1 = conv_val0;
+						   ind_1_i = r;
+						   ind_1_j = c;
+					}
+					else
+					{
+						max_pool_1 = conv_val1;
+						   ind_1_i = r  ;
+						   ind_1_j = c+1;
+					}
+
+					if (conv_val2 > conv_val3)
+					{
+						max_pool_2 = conv_val2;
+						   ind_2_i = r+1;
+						   ind_2_j = c  ;
+					}
+					else
+					{
+						max_pool_2 = conv_val3;
+						   ind_2_i = r+1;
+						   ind_2_j = c+1;
+					}
+
+					if (max_pool_1 > max_pool_2)
+					{
+						max_pool = max_pool_1;
+						   ind_i = ind_1_i;
+						   ind_j = ind_1_j;
+					}
+					else
+					{
+						max_pool = max_pool_2;
+						   ind_i = ind_2_i;
+						   ind_j = ind_2_j;
+					}
+
+					(pool_t->data)[ind_pool_out(b, f, pool_i, pool_j)] = max_pool;
+
+					pool_index_i[b][f][pool_i][pool_j] = ind_i;
+					pool_index_j[b][f][pool_i][pool_j] = ind_j;
+				}
+			}			
+		}
+	}
+}
+
+// loop on conv rows and cols unrolled by 2, max-pooling done, pool indexes not saved
+void xnor_convolve_pool_validation(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], 
+						tensor* conv_t, int batch_size, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
+						double alphas[NUM_FILS], tensor fil_b, tensor* pool_t)
+{
+	double conv_val0, conv_val1, conv_val2, conv_val3;
+	double alpha, bias;
+	double beta0, beta1, beta2, beta3;
+	double weight;
+
+	double prev1, prev2, curr1, curr2;
+
+	double input_pixel0;
+	double input_pixel1;
+	double input_pixel2;
+	double input_pixel3;
+
+	int pool_i, pool_j;
+	int max_pool_1, max_pool_2, max_pool;
+
+	for (int b = 0; b < batch_size; ++b)
+	{
+
+		for (int f = 0; f < NUM_FILS; ++f)
+		{
+
+			alpha = alphas[f];
+			bias = fil_b.data[f];
+
+			for (int r = 0, pool_i = 0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
+			{
+
+				for (int c = 0, pool_j = 0; c+1 < N_COLS_CONV; c=c+2, ++pool_j)
+				{
+
+					beta0 = betas[b][r  ][c  ];
+					beta1 = betas[b][r  ][c+1];
+					beta2 = betas[b][r+1][c  ];
+					beta3 = betas[b][r+1][c+1];
+
+					conv_val0 = 0.0;
+					conv_val1 = 0.0;
+					conv_val2 = 0.0;
+					conv_val3 = 0.0;
+
+					for (int i = 0; i < FIL_ROWS; ++i)
+					{
+
+						prev1 = bin_input_images[b][i+r  ][0+c  ];
+						prev2 = bin_input_images[b][i+r+1][0+c  ];
+
+						for (int j = 0; j < FIL_COLS; ++j)
+						{
+
+							INCREMENT_FLOPS(8)
+
+							weight = fil_bin_w[f][i][j];
+
+							input_pixel0 = prev1;
+							input_pixel1 = bin_input_images[b][i+r  ][j+c+1];
+							input_pixel2 = prev2;
+							input_pixel3 = bin_input_images[b][i+r+1][j+c+1];
+
+							// XNOR operation
+							//conv_val += ( bin_input_images[b][i+r][j+c] == fil_bin_w[f][i][j] );
+
+							conv_val0 += ( input_pixel0 * weight );
+							conv_val1 += ( input_pixel1 * weight );
+							conv_val2 += ( input_pixel2 * weight );
+							conv_val3 += ( input_pixel3 * weight );
+
+							prev1 = input_pixel1;
+							prev2 = input_pixel3;
+						}
+					}
+
+					INCREMENT_FLOPS(16)
+
+					conv_val0 *= alpha * beta0;
+					conv_val1 *= alpha * beta1;
+					conv_val2 *= alpha * beta2;
+					conv_val3 *= alpha * beta3;
+
+					conv_val0 += bias;
+					conv_val1 += bias;
+					conv_val2 += bias;
+					conv_val3 += bias;
+
+					// applying ReLU
+					if (conv_val0 < 0.0)
+					{
+						conv_val0 = 0.0;
+					}
+
+					if (conv_val1 < 0.0)
+					{
+						conv_val1 = 0.0;
+					}
+
+					if (conv_val2 < 0.0)
+					{
+						conv_val2 = 0.0;
+					}
+
+					if (conv_val3 < 0.0)
+					{
+						conv_val3 = 0.0;
+					}
+
+					(conv_t->data)[ind_conv_out(b, f, r  , c  )] = conv_val0;
+					(conv_t->data)[ind_conv_out(b, f, r  , c+1)] = conv_val1;
+					(conv_t->data)[ind_conv_out(b, f, r+1, c  )] = conv_val2;
+					(conv_t->data)[ind_conv_out(b, f, r+1, c+1)] = conv_val3;
+
+
+					// ----------------------------------------------Max pooling---------------------------------------
+
+					if (conv_val0 > conv_val1)
+					{
+						max_pool_1 = conv_val0;
+					}
+					else
+					{
+						max_pool_1 = conv_val1;
+					}
+
+					if (conv_val2 > conv_val3)
+					{
+						max_pool_2 = conv_val2;
+					}
+					else
+					{
+						max_pool_2 = conv_val3;
+					}
+
+					if (max_pool_1 > max_pool_2)
+					{
+						max_pool = max_pool_1;
+					}
+					else
+					{
+						max_pool = max_pool_2;
+					}
+
+					(pool_t->data)[ind_pool_out(b, f, pool_i, pool_j)] = max_pool;
 				}
 			}
 			
@@ -703,7 +910,7 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 // loop on conv rows and cols unrolled by 2
 void xnor_convolution(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], 
 						tensor* conv_t, int batch_size, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
-						double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[])
+						double alphas[NUM_FILS], tensor fil_b)
 {
 	double conv_val0, conv_val1, conv_val2, conv_val3;
 	double alpha, bias;
