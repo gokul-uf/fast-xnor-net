@@ -280,6 +280,8 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 
 	int pool_i, pool_j;
 
+	double prev1, prev2;
+
 
 	for (int b = 0; b < batch_size; ++b)
 	{
@@ -298,11 +300,14 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 				for (int i = 0; i < FIL_ROWS; ++i)
 				{
 
+					prev1 = (input_t->data)[ind_input_img(cur_image, r+i  , c+0  )];
+					prev2 = (input_t->data)[ind_input_img(cur_image, r+i+1, c+0  )];
+
 					for (int j = 0; j < FIL_COLS; ++j)
 					{
-						input_pixel0 = (input_t->data)[ind_input_img(cur_image, r+i  , c+j  )];
+						input_pixel0 = prev1;
 						input_pixel1 = (input_t->data)[ind_input_img(cur_image, r+i  , c+j+1)];
-						input_pixel2 = (input_t->data)[ind_input_img(cur_image, r+i+1, c+j  )];
+						input_pixel2 = prev2;
 						input_pixel3 = (input_t->data)[ind_input_img(cur_image, r+i+1, c+j+1)];
 
 						INCREMENT_FLOPS(12)
@@ -353,6 +358,9 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 							conv_val_r1c0_f2 -= input_pixel2;
 							conv_val_r1c1_f2 -= input_pixel3;
 						}
+
+						prev1 = input_pixel1;
+						prev2 = input_pixel3;
 
 					}
 				}
