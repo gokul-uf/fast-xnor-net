@@ -29,8 +29,8 @@
 #define NUM_EPOCHS 				20
 #define COUNT_BATCHES			NUM_TRAIN/BATCH_SIZE
 #define INCREMENT_FLOPS(i)		;
-#define PRINT_FLOPS()  			printf("Total flops=2773775\n"); //binary net = 2159055, xnor net = 2773775
-#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*2773775/cycles);
+#define PRINT_FLOPS()  			printf("Total flops=2087055\n"); //binary net = 2087055, xnor net = 2701775
+#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*2087055/cycles);
 
 #endif
 

@@ -72,7 +72,7 @@ double MULTIPLIER;
 }*/
 
 // batches in outermost loop
-/*void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
 {
 	int true_label;
 
@@ -201,46 +201,46 @@ double MULTIPLIER;
 				INCREMENT_FLOPS(60)
 
 				// ---------------------------------------Filter 0-------------------------------------------
-				(fully_con_w->data)[ind_fully_con_w(0, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][0];
-				(fully_con_w->data)[ind_fully_con_w(1, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][1];
-				(fully_con_w->data)[ind_fully_con_w(2, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][2];
-				(fully_con_w->data)[ind_fully_con_w(3, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][3];
-				(fully_con_w->data)[ind_fully_con_w(4, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][4];
-				(fully_con_w->data)[ind_fully_con_w(5, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][5];
-				(fully_con_w->data)[ind_fully_con_w(6, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][6];
-				(fully_con_w->data)[ind_fully_con_w(7, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][7];
-				(fully_con_w->data)[ind_fully_con_w(8, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][8];
-				(fully_con_w->data)[ind_fully_con_w(9, 0, r, c)] -= MULTIPLIER*delta_ws[r][c][0][9];
+				(fully_con_w->data)[ind_fully_con_w(0, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][0];
+				(fully_con_w->data)[ind_fully_con_w(1, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][1];
+				(fully_con_w->data)[ind_fully_con_w(2, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][2];
+				(fully_con_w->data)[ind_fully_con_w(3, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][3];
+				(fully_con_w->data)[ind_fully_con_w(4, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][4];
+				(fully_con_w->data)[ind_fully_con_w(5, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][5];
+				(fully_con_w->data)[ind_fully_con_w(6, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][6];
+				(fully_con_w->data)[ind_fully_con_w(7, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][7];
+				(fully_con_w->data)[ind_fully_con_w(8, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][8];
+				(fully_con_w->data)[ind_fully_con_w(9, 0, r, c)] -= MULTIPLIER * delta_ws[r][c][0][9];
 
 				// ---------------------------------------Filter 1-------------------------------------------
-				(fully_con_w->data)[ind_fully_con_w(0, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][0];
-				(fully_con_w->data)[ind_fully_con_w(1, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][1];
-				(fully_con_w->data)[ind_fully_con_w(2, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][2];
-				(fully_con_w->data)[ind_fully_con_w(3, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][3];
-				(fully_con_w->data)[ind_fully_con_w(4, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][4];
-				(fully_con_w->data)[ind_fully_con_w(5, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][5];
-				(fully_con_w->data)[ind_fully_con_w(6, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][6];
-				(fully_con_w->data)[ind_fully_con_w(7, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][7];
-				(fully_con_w->data)[ind_fully_con_w(8, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][8];
-				(fully_con_w->data)[ind_fully_con_w(9, 1, r, c)] -= MULTIPLIER*delta_ws[r][c][1][9];
+				(fully_con_w->data)[ind_fully_con_w(0, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][0];
+				(fully_con_w->data)[ind_fully_con_w(1, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][1];
+				(fully_con_w->data)[ind_fully_con_w(2, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][2];
+				(fully_con_w->data)[ind_fully_con_w(3, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][3];
+				(fully_con_w->data)[ind_fully_con_w(4, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][4];
+				(fully_con_w->data)[ind_fully_con_w(5, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][5];
+				(fully_con_w->data)[ind_fully_con_w(6, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][6];
+				(fully_con_w->data)[ind_fully_con_w(7, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][7];
+				(fully_con_w->data)[ind_fully_con_w(8, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][8];
+				(fully_con_w->data)[ind_fully_con_w(9, 1, r, c)] -= MULTIPLIER * delta_ws[r][c][1][9];
 
 				// ---------------------------------------Filter 2-------------------------------------------
-				(fully_con_w->data)[ind_fully_con_w(0, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][0];
-				(fully_con_w->data)[ind_fully_con_w(1, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][1];
-				(fully_con_w->data)[ind_fully_con_w(2, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][2];
-				(fully_con_w->data)[ind_fully_con_w(3, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][3];
-				(fully_con_w->data)[ind_fully_con_w(4, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][4];
-				(fully_con_w->data)[ind_fully_con_w(5, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][5];
-				(fully_con_w->data)[ind_fully_con_w(6, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][6];
-				(fully_con_w->data)[ind_fully_con_w(7, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][7];
-				(fully_con_w->data)[ind_fully_con_w(8, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][8];
-				(fully_con_w->data)[ind_fully_con_w(9, 2, r, c)] -= MULTIPLIER*delta_ws[r][c][2][9];
+				(fully_con_w->data)[ind_fully_con_w(0, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][0];
+				(fully_con_w->data)[ind_fully_con_w(1, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][1];
+				(fully_con_w->data)[ind_fully_con_w(2, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][2];
+				(fully_con_w->data)[ind_fully_con_w(3, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][3];
+				(fully_con_w->data)[ind_fully_con_w(4, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][4];
+				(fully_con_w->data)[ind_fully_con_w(5, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][5];
+				(fully_con_w->data)[ind_fully_con_w(6, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][6];
+				(fully_con_w->data)[ind_fully_con_w(7, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][7];
+				(fully_con_w->data)[ind_fully_con_w(8, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][8];
+				(fully_con_w->data)[ind_fully_con_w(9, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][9];
 		}
 	}
-}*/
+}
 
 // No unrolling
-void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+/*void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
 {
 	int cur_label;
 
@@ -270,7 +270,7 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 			}
 		}
 	}
-}
+}*/
 
 // loop on digits unrolled
 /*void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels, int base, int shuffle_index[])
