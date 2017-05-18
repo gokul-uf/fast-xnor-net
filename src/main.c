@@ -359,21 +359,21 @@ void binary_net()
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
-            if( (i+1)%1000 == 0 ){
+            /*if( (i+1)%1000 == 0 ){
                 train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
 
                 val_acc = bin_validate();
 
                 printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
                             BINARY_NET, epoch+1, i+1, train_acc, val_acc);
-                /*printf("\nPred\n");
+                printf("\nPred\n");
                 print_tensor_1d(&softmax_out, 10, 0);
-                printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);*/
+                printf("Label: %d\n", labels[ shuffle_index[i*BATCH_SIZE] ]);
 
                 //print_bin_filters(fil_bin_w, alphas);
                 //print_tensor_1d(&softmax_out, 10, 0);
                 //print_tensor(&fully_con_w, 0, 12);
-            }
+            }*/
 
             reset_to_zero(&del_max_pool);
             reset_to_zero(&del_conv);
@@ -382,6 +382,11 @@ void binary_net()
             reset_to_zero(&fully_con_out);
             reset_to_zero(&softmax_out);
         }
+
+        train_acc = (correct_preds*100.0) / NUM_TRAIN;
+        val_acc = bin_validate();
+        printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                            BINARY_NET, epoch+1, train_acc, val_acc);
 
         binarize_cycles /= N_BATCHES;
         conv_cycles     /= N_BATCHES;
@@ -517,14 +522,14 @@ void xnor_net()
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
-            if( (i+1)%1000 == 0 ){
+/*            if( (i+1)%1000 == 0 ){
                 train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
 
                 val_acc = xnor_validate();
 
                 printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
                                 BINARY_NET, epoch+1, i+1, train_acc, val_acc);
-            }
+            }*/
 
             reset_to_zero(&del_max_pool);
             reset_to_zero(&del_conv);
@@ -533,6 +538,11 @@ void xnor_net()
             reset_to_zero(&fully_con_out);
             reset_to_zero(&softmax_out);
         }
+
+        train_acc = (correct_preds*100.0) / NUM_TRAIN;
+        val_acc = xnor_validate();
+        printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                                BINARY_NET, epoch+1, train_acc, val_acc);
 
         binarize_cycles /= N_BATCHES;
         bin_activ_cycles/= N_BATCHES;
