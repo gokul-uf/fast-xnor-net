@@ -302,16 +302,16 @@ void binary_net()
             binarize_cycles += cycles_count_stop();
 
             cycles_count_start();
-            /*bin_convolution(&input_images, &conv_t, &pool_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index,
-                                pool_index_i, pool_index_j);*/
+            bin_convolve_pool(&input_images, &conv_t, &pool_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index,
+                                pool_index_i, pool_index_j);
 
-            bin_convolution(&input_images, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index);
+            /*bin_convolution(&input_images, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index);*/
 
             conv_cycles += cycles_count_stop();
            
-            cycles_count_start();
+            /*cycles_count_start();
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
-            pool_cycles += cycles_count_stop();
+            pool_cycles += cycles_count_stop();*/
 
             cycles_count_start();
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, BATCH_SIZE);
@@ -359,7 +359,7 @@ void binary_net()
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
-            if( (i+1)%500 == 0 ){
+            if( (i+1)%1000 == 0 ){
                 train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
 
                 val_acc = bin_validate();
@@ -654,13 +654,15 @@ double bin_validate(){
     int correct_preds = 0;
     for (int i = NUM_TRAIN; i+1 < NUM_TRAIN + NUM_VAL; i=i+2)
         {
-            /*bin_convolution(&input_images, &conv_t, &pool_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index,
-                                pool_index_i, pool_index_j);*/
+            bin_convolve_pool(&input_images, &conv_t, &pool_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index,
+                                pool_index_i, pool_index_j);
 
-            bin_convolution(&input_images, &conv_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index);
+            /*bin_convolution(&input_images, &conv_t, 2, fil_bin_w, alphas, fil_b, i, shuffle_index);*/
 
-            max_pooling(&conv_t, &pool_t, NULL, NULL, 2, 'V');
+            /*max_pooling(&conv_t, &pool_t, NULL, NULL, 2, 'V');*/
+
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 2);
+            
             softmax(&fully_con_out, &softmax_out, pred, 2);
 
             correct_preds += (labels[shuffle_index[i]] == pred[0]) + (labels[shuffle_index[i+1]] == pred[1]);
