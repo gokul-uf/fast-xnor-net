@@ -497,6 +497,7 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 	}
 }
 
+// inner loop on digits unrolled completely
 /*void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, int* labels, int base, tensor* fully_con_w, 
 	int shuffle_index[], int pool_index_i[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
@@ -519,9 +520,11 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 	double softmax_out_8;
 	double softmax_out_9;
 
+	int row, col, cur_label;
+
 	for (int b = 0; b < BATCH_SIZE; ++b)
 	{
-		int cur_label = labels[shuffle_index[base+b]];
+		cur_label = labels[shuffle_index[base+b]];
 
 		softmax_out_0 = (softmax_out->data)[ind_softmax_out(b, 0)];
 		softmax_out_1 = (softmax_out->data)[ind_softmax_out(b, 1)];
@@ -589,8 +592,8 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 
 
 					// bp from max_pool to conv
-					int row = pool_index_i[b][f][r][c];
-					int col = pool_index_j[b][f][r][c];
+					row = pool_index_i[b][f][r][c];
+					col = pool_index_j[b][f][r][c];
 
 					if (conv_t->data[ind_conv_out(b, f, row, col)] > 0.0)
 					{
@@ -603,6 +606,7 @@ void bp_maxpool_to_conv(tensor* del_conv, tensor* del_max_pool, tensor* conv_t, 
 	}
 }*/
 
+// inner loops on digits and filters unrolled completely
 void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, int* labels, int base, tensor* fully_con_w, 
 	int shuffle_index[], int pool_index_i[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
@@ -695,38 +699,38 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 				delta8 = softmax_out_8 - (cur_label == 8);
 				delta9 = softmax_out_9 - (cur_label == 9);
 
-				w0_f0 = (fully_con_w->data)[offset(fully_con_w, 0, c, r, 0)];
-				w1_f0 = (fully_con_w->data)[offset(fully_con_w, 1, c, r, 0)];
-				w2_f0 = (fully_con_w->data)[offset(fully_con_w, 2, c, r, 0)];
-				w3_f0 = (fully_con_w->data)[offset(fully_con_w, 3, c, r, 0)];
-				w4_f0 = (fully_con_w->data)[offset(fully_con_w, 4, c, r, 0)];
-				w5_f0 = (fully_con_w->data)[offset(fully_con_w, 5, c, r, 0)];
-				w6_f0 = (fully_con_w->data)[offset(fully_con_w, 6, c, r, 0)];
-				w7_f0 = (fully_con_w->data)[offset(fully_con_w, 7, c, r, 0)];
-				w8_f0 = (fully_con_w->data)[offset(fully_con_w, 8, c, r, 0)];
-				w9_f0 = (fully_con_w->data)[offset(fully_con_w, 9, c, r, 0)];
+				w0_f0 = (fully_con_w->data)[ind_fully_con_w(0, 0, r, c)];
+				w1_f0 = (fully_con_w->data)[ind_fully_con_w(1, 0, r, c)];
+				w2_f0 = (fully_con_w->data)[ind_fully_con_w(2, 0, r, c)];
+				w3_f0 = (fully_con_w->data)[ind_fully_con_w(3, 0, r, c)];
+				w4_f0 = (fully_con_w->data)[ind_fully_con_w(4, 0, r, c)];
+				w5_f0 = (fully_con_w->data)[ind_fully_con_w(5, 0, r, c)];
+				w6_f0 = (fully_con_w->data)[ind_fully_con_w(6, 0, r, c)];
+				w7_f0 = (fully_con_w->data)[ind_fully_con_w(7, 0, r, c)];
+				w8_f0 = (fully_con_w->data)[ind_fully_con_w(8, 0, r, c)];
+				w9_f0 = (fully_con_w->data)[ind_fully_con_w(9, 0, r, c)];
 
-				w0_f1 = (fully_con_w->data)[offset(fully_con_w, 0, c, r, 1)];
-				w1_f1 = (fully_con_w->data)[offset(fully_con_w, 1, c, r, 1)];
-				w2_f1 = (fully_con_w->data)[offset(fully_con_w, 2, c, r, 1)];
-				w3_f1 = (fully_con_w->data)[offset(fully_con_w, 3, c, r, 1)];
-				w4_f1 = (fully_con_w->data)[offset(fully_con_w, 4, c, r, 1)];
-				w5_f1 = (fully_con_w->data)[offset(fully_con_w, 5, c, r, 1)];
-				w6_f1 = (fully_con_w->data)[offset(fully_con_w, 6, c, r, 1)];
-				w7_f1 = (fully_con_w->data)[offset(fully_con_w, 7, c, r, 1)];
-				w8_f1 = (fully_con_w->data)[offset(fully_con_w, 8, c, r, 1)];
-				w9_f1 = (fully_con_w->data)[offset(fully_con_w, 9, c, r, 1)];
+				w0_f1 = (fully_con_w->data)[ind_fully_con_w(0, 1, r, c)];
+				w1_f1 = (fully_con_w->data)[ind_fully_con_w(1, 1, r, c)];
+				w2_f1 = (fully_con_w->data)[ind_fully_con_w(2, 1, r, c)];
+				w3_f1 = (fully_con_w->data)[ind_fully_con_w(3, 1, r, c)];
+				w4_f1 = (fully_con_w->data)[ind_fully_con_w(4, 1, r, c)];
+				w5_f1 = (fully_con_w->data)[ind_fully_con_w(5, 1, r, c)];
+				w6_f1 = (fully_con_w->data)[ind_fully_con_w(6, 1, r, c)];
+				w7_f1 = (fully_con_w->data)[ind_fully_con_w(7, 1, r, c)];
+				w8_f1 = (fully_con_w->data)[ind_fully_con_w(8, 1, r, c)];
+				w9_f1 = (fully_con_w->data)[ind_fully_con_w(9, 1, r, c)];
 
-				w0_f2 = (fully_con_w->data)[offset(fully_con_w, 0, c, r, 2)];
-				w1_f2 = (fully_con_w->data)[offset(fully_con_w, 1, c, r, 2)];
-				w2_f2 = (fully_con_w->data)[offset(fully_con_w, 2, c, r, 2)];
-				w3_f2 = (fully_con_w->data)[offset(fully_con_w, 3, c, r, 2)];
-				w4_f2 = (fully_con_w->data)[offset(fully_con_w, 4, c, r, 2)];
-				w5_f2 = (fully_con_w->data)[offset(fully_con_w, 5, c, r, 2)];
-				w6_f2 = (fully_con_w->data)[offset(fully_con_w, 6, c, r, 2)];
-				w7_f2 = (fully_con_w->data)[offset(fully_con_w, 7, c, r, 2)];
-				w8_f2 = (fully_con_w->data)[offset(fully_con_w, 8, c, r, 2)];
-				w9_f2 = (fully_con_w->data)[offset(fully_con_w, 9, c, r, 2)];
+				w0_f2 = (fully_con_w->data)[ind_fully_con_w(0, 2, r, c)];
+				w1_f2 = (fully_con_w->data)[ind_fully_con_w(1, 2, r, c)];
+				w2_f2 = (fully_con_w->data)[ind_fully_con_w(2, 2, r, c)];
+				w3_f2 = (fully_con_w->data)[ind_fully_con_w(3, 2, r, c)];
+				w4_f2 = (fully_con_w->data)[ind_fully_con_w(4, 2, r, c)];
+				w5_f2 = (fully_con_w->data)[ind_fully_con_w(5, 2, r, c)];
+				w6_f2 = (fully_con_w->data)[ind_fully_con_w(6, 2, r, c)];
+				w7_f2 = (fully_con_w->data)[ind_fully_con_w(7, 2, r, c)];
+				w8_f2 = (fully_con_w->data)[ind_fully_con_w(8, 2, r, c)];
+				w9_f2 = (fully_con_w->data)[ind_fully_con_w(9, 2, r, c)];
 
 
 				sum0_f0 = delta0 * w0_f0;
@@ -762,38 +766,38 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 				sum8_f2 = delta8 * w8_f2;
 				sum9_f2 = delta9 * w9_f2;
 
-				sum01_f0 = sum0_f0+sum1_f0;
-				sum23_f0 = sum2_f0+sum3_f0;
-				sum45_f0 = sum4_f0+sum5_f0;
-				sum67_f0 = sum6_f0+sum7_f0;
-				sum89_f0 = sum8_f0+sum9_f0;
+				sum01_f0 = sum0_f0 + sum1_f0;
+				sum23_f0 = sum2_f0 + sum3_f0;
+				sum45_f0 = sum4_f0 + sum5_f0;
+				sum67_f0 = sum6_f0 + sum7_f0;
+				sum89_f0 = sum8_f0 + sum9_f0;
 
-				sum0123_f0 = sum01_f0   + sum23_f0;
-				sum4567_f0 = sum45_f0   + sum67_f0;
+				sum0123_f0 =   sum01_f0 +   sum23_f0;
+				sum4567_f0 =   sum45_f0 +   sum67_f0;
 				 sum0_7_f0 = sum0123_f0 + sum4567_f0;
-				sum_fin_f0 = sum0_7_f0  + sum89_f0;
+				sum_fin_f0 =  sum0_7_f0 +   sum89_f0;
 
-				sum01_f1 = sum0_f1+sum1_f1;
-				sum23_f1 = sum2_f1+sum3_f1;
-				sum45_f1 = sum4_f1+sum5_f1;
-				sum67_f1 = sum6_f1+sum7_f1;
-				sum89_f1 = sum8_f1+sum9_f1;
+				sum01_f1 = sum0_f1 + sum1_f1;
+				sum23_f1 = sum2_f1 + sum3_f1;
+				sum45_f1 = sum4_f1 + sum5_f1;
+				sum67_f1 = sum6_f1 + sum7_f1;
+				sum89_f1 = sum8_f1 + sum9_f1;
 
-				sum0123_f1 = sum01_f1   + sum23_f1;
-				sum4567_f1 = sum45_f1   + sum67_f1;
-				sum0_7_f1  = sum0123_f1 + sum4567_f1;
-				sum_fin_f1 = sum0_7_f1  + sum89_f1;
+				sum0123_f1 =   sum01_f1 +   sum23_f1;
+				sum4567_f1 =   sum45_f1 +   sum67_f1;
+				 sum0_7_f1 = sum0123_f1 + sum4567_f1;
+				sum_fin_f1 =  sum0_7_f1 +   sum89_f1;
 
-				sum01_f2 = sum0_f2+sum1_f2;
-				sum23_f2 = sum2_f2+sum3_f2;
-				sum45_f2 = sum4_f2+sum5_f2;
-				sum67_f2 = sum6_f2+sum7_f2;
-				sum89_f2 = sum8_f2+sum9_f2;
+				sum01_f2 = sum0_f2 + sum1_f2;
+				sum23_f2 = sum2_f2 + sum3_f2;
+				sum45_f2 = sum4_f2 + sum5_f2;
+				sum67_f2 = sum6_f2 + sum7_f2;
+				sum89_f2 = sum8_f2 + sum9_f2;
 
-				sum0123_f2 = sum01_f2   + sum23_f2;
-				sum4567_f2 = sum45_f2   + sum67_f2;
-				sum0_7_f2  = sum0123_f2 + sum4567_f2;
-				sum_fin_f2 = sum0_7_f2  + sum89_f2;
+				sum0123_f2 =   sum01_f2 +   sum23_f2;
+				sum4567_f2 =   sum45_f2 +   sum67_f2;
+				 sum0_7_f2 = sum0123_f2 + sum4567_f2;
+				sum_fin_f2 =  sum0_7_f2 +   sum89_f2;
 
 
 				// bp from max_pool to conv
@@ -806,19 +810,19 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 				row_f2 = pool_index_i[b][2][r][c];
 				col_f2 = pool_index_j[b][2][r][c];
 
-				if (conv_t->data[offset(conv_t, b, col_f0, row_f0, 0)] > 0.0)
+				if (    conv_t->data[ind_conv_out(b, 0, row_f0, col_f0)] > 0.0)
 				{
-					(del_conv->data)[offset(del_conv, b, col_f0, row_f0, 0)] = sum_fin_f0;
+					(del_conv->data)[ind_conv_out(b, 0, row_f0, col_f0)] = sum_fin_f0;
 				}
 
-				if (conv_t->data[offset(conv_t, b, col_f1, row_f1, 1)] > 0.0)
+				if (    conv_t->data[ind_conv_out(b, 1, row_f1, col_f1)] > 0.0)
 				{
-					(del_conv->data)[offset(del_conv, b, col_f1, row_f1, 1)] = sum_fin_f1;
+					(del_conv->data)[ind_conv_out(b, 1, row_f1, col_f1)] = sum_fin_f1;
 				}
 
-				if (conv_t->data[offset(conv_t, b, col_f2, row_f2, 2)] > 0.0)
+				if (    conv_t->data[ind_conv_out(b, 2, row_f2, col_f2)] > 0.0)
 				{
-					(del_conv->data)[offset(del_conv, b, col_f2, row_f2, 2)] = sum_fin_f2;
+					(del_conv->data)[ind_conv_out(b, 2, row_f2, col_f2)] = sum_fin_f2;
 				}
 			}
 		}

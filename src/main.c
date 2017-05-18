@@ -323,18 +323,18 @@ void binary_net()
 
             //------------------------------BACK PROPAGATION----------------------------------------------
 
-            /*cycles_count_start();
+            cycles_count_start();
             bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index, 
                                 pool_index_i, pool_index_j);
-            bp_softmax_to_conv_cycles += cycles_count_stop();*/
+            bp_softmax_to_conv_cycles += cycles_count_stop();
 
-            cycles_count_start();
+            /*cycles_count_start();
             bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
             bp_soft_to_pool_cycles += cycles_count_stop();
 
             cycles_count_start();
             bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
-            bp_pool_to_conv_cycles += cycles_count_stop();
+            bp_pool_to_conv_cycles += cycles_count_stop();*/
 
             cycles_count_start();
             update_sotmax_weights(&fully_con_w, &softmax_out, &pool_t, labels, i*BATCH_SIZE, shuffle_index);
@@ -383,10 +383,12 @@ void binary_net()
             reset_to_zero(&softmax_out);
         }
 
-        train_acc = (correct_preds*100.0) / NUM_TRAIN;
-        val_acc = bin_validate();
-        printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
-                            BINARY_NET, epoch+1, train_acc, val_acc);
+        #ifndef COUNT_FLOPS
+            train_acc = (correct_preds*100.0) / NUM_TRAIN;
+            val_acc = bin_validate();
+            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                                BINARY_NET, epoch+1, train_acc, val_acc);
+        #endif
 
         binarize_cycles /= N_BATCHES;
         conv_cycles     /= N_BATCHES;
@@ -485,19 +487,19 @@ void xnor_net()
 
             // ------------------------------------------------back propagation--------------------------------
 
-            /*cycles_count_start();
+            cycles_count_start();
             bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index, 
                                 pool_index_i, pool_index_j);
-            bp_softmax_to_conv_cycles += cycles_count_stop();*/
+            bp_softmax_to_conv_cycles += cycles_count_stop();
 
 
-            cycles_count_start();
+            /*cycles_count_start();
             bp_softmax_to_maxpool(&del_max_pool, &softmax_out, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index);
             bp_soft_to_pool_cycles += cycles_count_stop();
 
             cycles_count_start();
             bp_maxpool_to_conv(&del_conv, &del_max_pool, &conv_t, pool_index_i, pool_index_j);
-            bp_pool_to_conv_cycles += cycles_count_stop();
+            bp_pool_to_conv_cycles += cycles_count_stop();*/
 
             // update weights and biases
             cycles_count_start();
@@ -522,7 +524,8 @@ void xnor_net()
 
             correct_preds += calc_correct_preds(preds, labels, i, shuffle_index);
 
-/*            if( (i+1)%1000 == 0 ){
+            /*if( (i+1)%1000 == 0 )
+            {
                 train_acc = (correct_preds*100.0) / ((i+1)*BATCH_SIZE);
 
                 val_acc = xnor_validate();
@@ -539,10 +542,12 @@ void xnor_net()
             reset_to_zero(&softmax_out);
         }
 
-        train_acc = (correct_preds*100.0) / NUM_TRAIN;
-        val_acc = xnor_validate();
-        printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
-                                BINARY_NET, epoch+1, train_acc, val_acc);
+        #ifndef COUNT_FLOPS
+            train_acc = (correct_preds*100.0) / NUM_TRAIN;
+            val_acc = xnor_validate();
+            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                                    BINARY_NET, epoch+1, train_acc, val_acc);
+        #endif
 
         binarize_cycles /= N_BATCHES;
         bin_activ_cycles/= N_BATCHES;

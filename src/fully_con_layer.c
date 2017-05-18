@@ -36,8 +36,9 @@ int TOTAL_FLOPS;
 	}
 }
 */
+
 // no loop unrolling
-void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[], int batch_size)
+/*void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[], int batch_size)
 {
 	double max, max_index;
 	double mat_val;
@@ -79,7 +80,7 @@ void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[], int batch_
 															);
 		}
 	}
-}
+}*/
 
 void initialize_weights_biases(tensor* fully_con_w, tensor* fully_con_b){
 
@@ -265,7 +266,6 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 	}
 }
 
-
 // loops on pool rows and cols unrolled
 /*void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, tensor* fully_con_b, int batch_size)
 {
@@ -321,7 +321,7 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 	}
 }*/
 
-/*void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[], int batch_size)
+void softmax(tensor* fully_con_out, tensor* softmax_out, int preds[], int batch_size)
 {
 	for (int b = 0; b < batch_size; ++b)
 	{
@@ -358,4 +358,3 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 		}
 	}
 }
-*/
