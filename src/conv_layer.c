@@ -297,8 +297,15 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 
     int CONV_SIZE = NUM_FILS * N_ROWS_CONV * N_COLS_CONV;
 
+    int pool_f_index0 = 0;
+    int pool_f_index1 = N_ROWS_POOL * N_COLS_POOL;
+    int pool_f_index2 = N_ROWS_POOL * N_COLS_POOL * 2;
+
+    int POOL_SIZE = NUM_FILS * N_ROWS_POOL * N_COLS_POOL;
+
     double* conv_data = conv_t->data;
     double* input_data = input_t->data;
+    double* pool_data = pool_t->data;
 
 	for (int b = 0; b < batch_size; ++b)
 	{
@@ -320,11 +327,18 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
         int conv_index210 = conv_f_index210;
         int conv_index211 = conv_f_index211;
 
+        int pool_r_index0 = pool_f_index0;
+        int pool_r_index1 = pool_f_index1;
+        int pool_r_index2 = pool_f_index2;
 		// Unroll r and c loops by 2 so that max pooling can be merged with convolution
 		for (int r = 0, pool_i=0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
 		{
+            int pool_index0 = pool_r_index0;
+            int pool_index1 = pool_r_index1;
+            int pool_index2 = pool_r_index2;
 			for (int c = 0, pool_j=0; c+1 < N_ROWS_CONV; c=c+2, ++pool_j)
 			{
+
 				conv_val_r0c0_f0 = 0.0, conv_val_r0c0_f1 = 0.0, conv_val_r0c0_f2 = 0.0;
 				conv_val_r0c1_f0 = 0.0, conv_val_r0c1_f1 = 0.0, conv_val_r0c1_f2 = 0.0;
 				conv_val_r1c0_f0 = 0.0, conv_val_r1c0_f1 = 0.0, conv_val_r1c0_f2 = 0.0;
@@ -514,6 +528,21 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					conv_val_r1c1_f2 = 0.0;
 				}
 
+				// (conv_t->data)[ind_conv_out(b, 0, r  , c  )] = conv_val_r0c0_f0;
+				// (conv_t->data)[ind_conv_out(b, 0, r  , c+1)] = conv_val_r0c1_f0;
+				// (conv_t->data)[ind_conv_out(b, 0, r+1, c  )] = conv_val_r1c0_f0;
+				// (conv_t->data)[ind_conv_out(b, 0, r+1, c+1)] = conv_val_r1c1_f0;
+
+				// (conv_t->data)[ind_conv_out(b, 1, r  , c  )] = conv_val_r0c0_f1;
+				// (conv_t->data)[ind_conv_out(b, 1, r  , c+1)] = conv_val_r0c1_f1;
+				// (conv_t->data)[ind_conv_out(b, 1, r+1, c  )] = conv_val_r1c0_f1;
+				// (conv_t->data)[ind_conv_out(b, 1, r+1, c+1)] = conv_val_r1c1_f1;
+
+				// (conv_t->data)[ind_conv_out(b, 2, r  , c  )] = conv_val_r0c0_f2;
+				// (conv_t->data)[ind_conv_out(b, 2, r  , c+1)] = conv_val_r0c1_f2;
+				// (conv_t->data)[ind_conv_out(b, 2, r+1, c  )] = conv_val_r1c0_f2;
+				// (conv_t->data)[ind_conv_out(b, 2, r+1, c+1)] = conv_val_r1c1_f2;
+
 				conv_data[conv_index000] = conv_val_r0c0_f0;
 				conv_data[conv_index001] = conv_val_r0c1_f0;
 				conv_data[conv_index010] = conv_val_r1c0_f0;
@@ -571,7 +600,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_j_f0 = max_2_j_f0;
 				}
 
-				(pool_t->data)[ind_pool_out(b, 0, pool_i, pool_j)] = max_f0;
+				pool_data[pool_index0] = max_f0;
 				pool_index_i[b][0][pool_i][pool_j] = max_i_f0;
 				pool_index_j[b][0][pool_i][pool_j] = max_j_f0;
 
@@ -616,7 +645,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_j_f1 = max_2_j_f1;
 				}
 
-				(pool_t->data)[ind_pool_out(b, 1, pool_i, pool_j)] = max_f1;
+				pool_data[pool_index1] = max_f1;
 				pool_index_i[b][1][pool_i][pool_j] = max_i_f1;
 				pool_index_j[b][1][pool_i][pool_j] = max_j_f1;
 
@@ -660,7 +689,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_j_f2 = max_2_j_f2;
 				}
 
-				(pool_t->data)[ind_pool_out(b, 2, pool_i, pool_j)] = max_f2;
+				pool_data[pool_index2] = max_f2;
 				pool_index_i[b][2][pool_i][pool_j] = max_i_f2;
 				pool_index_j[b][2][pool_i][pool_j] = max_j_f2;
 
@@ -676,10 +705,18 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
                 conv_index201 += 2;
                 conv_index210 += 2;
                 conv_index211 += 2;
+
+                pool_index0 += 1;
+                pool_index1 += 1;
+                pool_index2 += 1;
 			}
 
             image_r_index0 += 2 * IMAGE_COLS;
             image_r_index1 = image_r_index0 + IMAGE_COLS;
+
+            pool_r_index0 += N_COLS_POOL;
+            pool_r_index1 += N_COLS_POOL;
+            pool_r_index2 += N_COLS_POOL;
 		}
         conv_f_index000 += CONV_SIZE;
         conv_f_index001 += CONV_SIZE;
@@ -693,6 +730,10 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
         conv_f_index201 += CONV_SIZE;
         conv_f_index210 += CONV_SIZE;
         conv_f_index211 += CONV_SIZE;
+
+        pool_f_index0 += POOL_SIZE;
+        pool_f_index1 += POOL_SIZE;
+        pool_f_index2 += POOL_SIZE;
 	}
 }
 
@@ -928,9 +969,54 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 
 	int f;
 
+    int SINGLE_FIL_CONV_SIZE = N_ROWS_CONV * N_COLS_CONV;
+
+    int conv_b_index100 = N_ROWS_CONV * N_COLS_CONV;
+    int conv_b_index000 = 0;
+    int conv_b_index001 = 1;
+    int conv_b_index110 = conv_b_index100 + N_COLS_CONV;
+    int conv_b_index101 = conv_b_index100 + 1;
+    int conv_b_index111 = conv_b_index110 + 1;
+    int conv_b_index200 = 2 * N_ROWS_CONV * N_COLS_CONV;
+    int conv_b_index010 = N_COLS_CONV;
+    int conv_b_index011 = N_COLS_CONV + 1;
+    int conv_b_index210 = conv_b_index200 + N_COLS_CONV;
+    int conv_b_index201 = conv_b_index200 + 1;
+    int conv_b_index211 = conv_b_index210 + N_COLS_CONV;
+
+    int CONV_SIZE = NUM_FILS * SINGLE_FIL_CONV_SIZE;
+    int THREE_FIL_CONV_SIZE = 3 * SINGLE_FIL_CONV_SIZE;
+
+    //int SINGLE_FIL_POOL_SIZE = N_ROWS_POOL * N_COLS_POOL;
+
+    //int pool_b_index0 = 0;
+    //int pool_b_index1 = N_ROWS_POOL * N_COLS_POOL;
+    //int pool_b_index2 = N_ROWS_POOL * N_COLS_POOL * 2;
+
+    //int POOL_SIZE = NUM_FILS * N_ROWS_POOL * N_COLS_POOL;
+    //int THREE_FIL_POOL_SIZE = 3 * SINGLE_FIL_POOL_SIZE;
+
+    double* conv_data = conv_t->data;
+    double* pool_data = pool_t->data;
+
 	for (int b = 0; b < batch_size; ++b)
 	{
+        int conv_f_index100 = conv_b_index100;
+        int conv_f_index000 = conv_b_index000;
+        int conv_f_index001 = conv_b_index001;
+        int conv_f_index110 = conv_b_index110;
+        int conv_f_index101 = conv_b_index101;
+        int conv_f_index111 = conv_b_index111;
+        int conv_f_index200 = conv_b_index200;
+        int conv_f_index010 = conv_b_index010;
+        int conv_f_index011 = conv_b_index011;
+        int conv_f_index210 = conv_b_index210;
+        int conv_f_index201 = conv_b_index201;
+        int conv_f_index211 = conv_b_index211;
 
+        //int pool_f_index0 = pool_b_index0;
+        //int pool_f_index1 = pool_b_index1;
+        //int pool_f_index2 = pool_b_index2;
 		for (f = 0; f+2 < NUM_FILS; f=f+3)
 		{
 
@@ -943,12 +1029,29 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 		 	alpha_f2 = alphas[f+2];
 			 bias_f2 = fil_b.data[f+2];
 
+            int conv_index000 = conv_f_index000;
+            int conv_index001 = conv_f_index001;
+            int conv_index010 = conv_f_index010;
+            int conv_index011 = conv_f_index011;
+            int conv_index100 = conv_f_index100;
+            int conv_index101 = conv_f_index101;
+            int conv_index110 = conv_f_index110;
+            int conv_index111 = conv_f_index111;
+            int conv_index200 = conv_f_index200;
+            int conv_index201 = conv_f_index201;
+            int conv_index210 = conv_f_index210;
+            int conv_index211 = conv_f_index211;
+
+            //int pool_r_index0 = pool_f_index0;
+            //int pool_r_index1 = pool_f_index1;
+            //int pool_r_index2 = pool_f_index2;
 			for (int r = 0, pool_i = 0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
 			{
-
+                //int pool_index0 = pool_r_index0;
+                //int pool_index1 = pool_r_index1;
+                //int pool_index2 = pool_r_index2;
 				for (int c = 0, pool_j = 0; c+1 < N_COLS_CONV; c=c+2, ++pool_j)
 				{
-
 					beta0 = betas[b][r  ][c  ];
 					beta1 = betas[b][r  ][c+1];
 					beta2 = betas[b][r+1][c  ];
@@ -1116,20 +1219,33 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 						conv_val3_f2 = 0.0;
 					}
 
-					(conv_t->data)[ind_conv_out(b, f  , r  , c  )] = conv_val0_f0;
-					(conv_t->data)[ind_conv_out(b, f  , r  , c+1)] = conv_val1_f0;
-					(conv_t->data)[ind_conv_out(b, f  , r+1, c  )] = conv_val2_f0;
-					(conv_t->data)[ind_conv_out(b, f  , r+1, c+1)] = conv_val3_f0;
+					//(conv_t->data)[ind_conv_out(b, f  , r  , c  )] = conv_val0_f0;
+					//(conv_t->data)[ind_conv_out(b, f  , r  , c+1)] = conv_val1_f0;
+					//(conv_t->data)[ind_conv_out(b, f  , r+1, c  )] = conv_val2_f0;
+					//(conv_t->data)[ind_conv_out(b, f  , r+1, c+1)] = conv_val3_f0;
 
-					(conv_t->data)[ind_conv_out(b, f+1, r  , c  )] = conv_val0_f1;
-					(conv_t->data)[ind_conv_out(b, f+1, r  , c+1)] = conv_val1_f1;
-					(conv_t->data)[ind_conv_out(b, f+1, r+1, c  )] = conv_val2_f1;
-					(conv_t->data)[ind_conv_out(b, f+1, r+1, c+1)] = conv_val3_f1;
+					//(conv_t->data)[ind_conv_out(b, f+1, r  , c  )] = conv_val0_f1;
+					//(conv_t->data)[ind_conv_out(b, f+1, r  , c+1)] = conv_val1_f1;
+					//(conv_t->data)[ind_conv_out(b, f+1, r+1, c  )] = conv_val2_f1;
+					//(conv_t->data)[ind_conv_out(b, f+1, r+1, c+1)] = conv_val3_f1;
 
-					(conv_t->data)[ind_conv_out(b, f+2, r  , c  )] = conv_val0_f2;
-					(conv_t->data)[ind_conv_out(b, f+2, r  , c+1)] = conv_val1_f2;
-					(conv_t->data)[ind_conv_out(b, f+2, r+1, c  )] = conv_val2_f2;
-					(conv_t->data)[ind_conv_out(b, f+2, r+1, c+1)] = conv_val3_f2;
+					//(conv_t->data)[ind_conv_out(b, f+2, r  , c  )] = conv_val0_f2;
+					//(conv_t->data)[ind_conv_out(b, f+2, r  , c+1)] = conv_val1_f2;
+					//(conv_t->data)[ind_conv_out(b, f+2, r+1, c  )] = conv_val2_f2;
+					//(conv_t->data)[ind_conv_out(b, f+2, r+1, c+1)] = conv_val3_f2;
+
+					conv_data[conv_index000] = conv_val0_f0;
+					conv_data[conv_index001] = conv_val1_f0;
+					conv_data[conv_index010] = conv_val2_f0;
+					conv_data[conv_index011] = conv_val3_f0;
+					conv_data[conv_index100] = conv_val0_f1;
+					conv_data[conv_index101] = conv_val1_f1;
+					conv_data[conv_index110] = conv_val2_f1;
+					conv_data[conv_index111] = conv_val3_f1;
+					conv_data[conv_index200] = conv_val0_f2;
+					conv_data[conv_index201] = conv_val1_f2;
+					conv_data[conv_index210] = conv_val2_f2;
+					conv_data[conv_index211] = conv_val3_f2;
 
 					// ----------------------------------------------Max pooling---------------------------------------
 
@@ -1256,9 +1372,12 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 					}
 
 
-					(pool_t->data)[ind_pool_out(b, f  , pool_i, pool_j)] = max_pool_f0;
-					(pool_t->data)[ind_pool_out(b, f+1, pool_i, pool_j)] = max_pool_f1;
-					(pool_t->data)[ind_pool_out(b, f+2, pool_i, pool_j)] = max_pool_f2;
+					pool_data[ind_pool_out(b, f  , pool_i, pool_j)] = max_pool_f0;
+					pool_data[ind_pool_out(b, f+1, pool_i, pool_j)] = max_pool_f1;
+					pool_data[ind_pool_out(b, f+2, pool_i, pool_j)] = max_pool_f2;
+                    //pool_data[pool_index0] = max_pool_f0;
+                    //pool_data[pool_index1] = max_pool_f1;
+                    //pool_data[pool_index2] = max_pool_f2;
 
 					pool_index_i[b][f  ][pool_i][pool_j] = ind_i_f0;
 					pool_index_j[b][f  ][pool_i][pool_j] = ind_j_f0;
@@ -1268,8 +1387,44 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 
 					pool_index_i[b][f+2][pool_i][pool_j] = ind_i_f2;
 					pool_index_j[b][f+2][pool_i][pool_j] = ind_j_f2;
+
+                    conv_index000 += 2;
+                    conv_index001 += 2;
+                    conv_index010 += 2;
+                    conv_index011 += 2;
+                    conv_index100 += 2;
+                    conv_index101 += 2;
+                    conv_index110 += 2;
+                    conv_index111 += 2;
+                    conv_index200 += 2;
+                    conv_index201 += 2;
+                    conv_index210 += 2;
+                    conv_index211 += 2;
+
+                    //pool_index0 += 1;
+                    //pool_index1 += 1;
+                    //pool_index2 += 1;
 				}
+                //pool_r_index0 += N_COLS_POOL;
+                //pool_r_index1 += N_COLS_POOL;
+                //pool_r_index2 += N_COLS_POOL;
 			}
+            conv_f_index100 += THREE_FIL_CONV_SIZE;
+            conv_f_index000 += THREE_FIL_CONV_SIZE;
+            conv_f_index001 += THREE_FIL_CONV_SIZE;
+            conv_f_index110 += THREE_FIL_CONV_SIZE;
+            conv_f_index101 += THREE_FIL_CONV_SIZE;
+            conv_f_index111 += THREE_FIL_CONV_SIZE;
+            conv_f_index200 += THREE_FIL_CONV_SIZE;
+            conv_f_index010 += THREE_FIL_CONV_SIZE;
+            conv_f_index011 += THREE_FIL_CONV_SIZE;
+            conv_f_index210 += THREE_FIL_CONV_SIZE;
+            conv_f_index201 += THREE_FIL_CONV_SIZE;
+            conv_f_index211 += THREE_FIL_CONV_SIZE;
+
+            //pool_f_index0 += THREE_FIL_POOL_SIZE;
+            //pool_f_index1 += THREE_FIL_POOL_SIZE;
+            //pool_f_index2 += THREE_FIL_POOL_SIZE;
 		}
 
 
@@ -1279,6 +1434,11 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 
 			alpha = alphas[f];
 			bias = fil_b.data[f];
+
+            int conv_index000 = conv_f_index000;
+            int conv_index001 = conv_f_index001;
+            int conv_index010 = conv_f_index010;
+            int conv_index011 = conv_f_index011;
 
 			for (int r = 0, pool_i = 0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
 			{
@@ -1360,10 +1520,15 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 						conv_val3 = 0.0;
 					}
 
-					(conv_t->data)[ind_conv_out(b, f, r  , c  )] = conv_val0;
-					(conv_t->data)[ind_conv_out(b, f, r  , c+1)] = conv_val1;
-					(conv_t->data)[ind_conv_out(b, f, r+1, c  )] = conv_val2;
-					(conv_t->data)[ind_conv_out(b, f, r+1, c+1)] = conv_val3;
+					//(conv_t->data)[ind_conv_out(b, f, r  , c  )] = conv_val0;
+					//(conv_t->data)[ind_conv_out(b, f, r  , c+1)] = conv_val1;
+					//(conv_t->data)[ind_conv_out(b, f, r+1, c  )] = conv_val2;
+					//(conv_t->data)[ind_conv_out(b, f, r+1, c+1)] = conv_val3;
+
+					conv_data[conv_index000] = conv_val0;
+					conv_data[conv_index001] = conv_val1;
+					conv_data[conv_index010] = conv_val2;
+					conv_data[conv_index011] = conv_val3;
 
 
 					// ----------------------------------------------Max pooling---------------------------------------
@@ -1409,13 +1574,46 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 						   ind_j = ind_2_j;
 					}
 
-					(pool_t->data)[ind_pool_out(b, f, pool_i, pool_j)] = max_pool;
+					pool_data[ind_pool_out(b, f, pool_i, pool_j)] = max_pool;
 
 					pool_index_i[b][f][pool_i][pool_j] = ind_i;
 					pool_index_j[b][f][pool_i][pool_j] = ind_j;
+
+                    conv_index000 += 2;
+                    conv_index001 += 2;
+                    conv_index010 += 2;
+                    conv_index011 += 2;
 				}
 			}
+            conv_f_index100 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index000 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index001 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index110 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index101 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index111 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index200 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index010 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index011 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index210 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index201 += SINGLE_FIL_CONV_SIZE;
+            conv_f_index211 += SINGLE_FIL_CONV_SIZE;
 		}
+        conv_b_index000 += CONV_SIZE;
+        conv_b_index001 += CONV_SIZE;
+        conv_b_index010 += CONV_SIZE;
+        conv_b_index011 += CONV_SIZE;
+        conv_b_index100 += CONV_SIZE;
+        conv_b_index101 += CONV_SIZE;
+        conv_b_index110 += CONV_SIZE;
+        conv_b_index111 += CONV_SIZE;
+        conv_b_index200 += CONV_SIZE;
+        conv_b_index201 += CONV_SIZE;
+        conv_b_index210 += CONV_SIZE;
+        conv_b_index211 += CONV_SIZE;
+
+        //pool_b_index0 += POOL_SIZE;
+        //pool_b_index1 += POOL_SIZE;
+        //pool_b_index2 += POOL_SIZE;
 	}
 }
 
@@ -1746,3 +1944,4 @@ void print_bin_filters(int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alpha
 		printf("\n");
 	}
 }
+
