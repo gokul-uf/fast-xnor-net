@@ -244,7 +244,7 @@ void normal_net()
 
                 val_acc = validate();
 
-                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
                             BINARY_NET, epoch+1, i+1, train_acc, val_acc);
                 /*printf("\nPred\n");
                 print_tensor_1d(&softmax_out, 10, 0);
@@ -308,7 +308,7 @@ void binary_net()
             /*bin_convolution(&input_images, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, i*BATCH_SIZE, shuffle_index);*/
 
             conv_cycles += cycles_count_stop();
-           
+
             /*cycles_count_start();
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
             pool_cycles += cycles_count_stop();*/
@@ -324,7 +324,7 @@ void binary_net()
             //------------------------------BACK PROPAGATION----------------------------------------------
 
             cycles_count_start();
-            bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index, 
+            bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index,
                                 pool_index_i, pool_index_j);
             bp_softmax_to_conv_cycles += cycles_count_stop();
 
@@ -359,7 +359,7 @@ void binary_net()
 
                 val_acc = bin_validate();
 
-                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
                             BINARY_NET, epoch+1, i+1, train_acc, val_acc);
                 printf("\nPred\n");
                 print_tensor_1d(&softmax_out, 10, 0);
@@ -381,11 +381,12 @@ void binary_net()
         #ifndef COUNT_FLOPS
             train_acc = (correct_preds*100.0) / NUM_TRAIN;
             val_acc = bin_validate();
-            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
                                 BINARY_NET, epoch+1, train_acc, val_acc);
         #endif
 
         binarize_cycles /= N_BATCHES;
+        printf("haha\n");
         conv_cycles     /= N_BATCHES;
         pool_cycles     /= N_BATCHES;
         fully_cycles    /= N_BATCHES;
@@ -423,7 +424,7 @@ void binary_net()
         printf("update_softmax_biases : %.2f\n", update_softmax_biases_cycles);
         printf("update_conv_weights   : %.2f\n", update_conv_weights_cycles);
         printf("update_conv_biases    : %.2f\n\n", update_conv_biases_cycles);
-        
+
         printf("forward_cycles        : %.2f\n", forward_cycles);
         printf("backward_cycles       : %.2f\n", backward_cycles);
         printf("total_cycles          : %.2f\n", total_cycles);
@@ -464,9 +465,9 @@ void xnor_net()
             bin_activ_cycles += cycles_count_stop();
 
             cycles_count_start();
-            xnor_convolve_pool(bin_input_images, betas, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b, 
-                                &pool_t, pool_index_i, pool_index_j); 
-            conv_cycles += cycles_count_stop();           
+            xnor_convolve_pool(bin_input_images, betas, &conv_t, BATCH_SIZE, fil_bin_w, alphas, fil_b,
+                                &pool_t, pool_index_i, pool_index_j);
+            conv_cycles += cycles_count_stop();
 
             /*cycles_count_start();
             max_pooling(&conv_t, &pool_t, pool_index_i, pool_index_j, BATCH_SIZE, 'T');
@@ -483,7 +484,7 @@ void xnor_net()
             // ------------------------------------------------back propagation--------------------------------
 
             cycles_count_start();
-            bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index, 
+            bp_softmax_to_conv(&del_conv, &softmax_out, &conv_t, labels, i*BATCH_SIZE, &fully_con_w, shuffle_index,
                                 pool_index_i, pool_index_j);
             bp_softmax_to_conv_cycles += cycles_count_stop();
 
@@ -521,7 +522,7 @@ void xnor_net()
 
                 val_acc = xnor_validate();
 
-                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
                                 BINARY_NET, epoch+1, i+1, train_acc, val_acc);
             }*/
 
@@ -536,7 +537,7 @@ void xnor_net()
         #ifndef COUNT_FLOPS
             train_acc = (correct_preds*100.0) / NUM_TRAIN;
             val_acc = xnor_validate();
-            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n", 
+            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
                                     BINARY_NET, epoch+1, train_acc, val_acc);
         #endif
 
@@ -558,7 +559,7 @@ void xnor_net()
         update_conv_weights_cycles    /= N_BATCHES;
         update_conv_biases_cycles     /= N_BATCHES;
 
-        backward_cycles = (bp_softmax_to_conv_cycles + bp_soft_to_pool_cycles + bp_pool_to_conv_cycles 
+        backward_cycles = (bp_softmax_to_conv_cycles + bp_soft_to_pool_cycles + bp_pool_to_conv_cycles
                             + update_softmax_weights_cycles + update_softmax_biases_cycles
                             + update_conv_weights_cycles + update_conv_biases_cycles);
 
@@ -580,7 +581,7 @@ void xnor_net()
         printf("update_softmax_biases : %.2f\n", update_softmax_biases_cycles);
         printf("update_conv_weights   : %.2f\n", update_conv_weights_cycles);
         printf("update_conv_biases    : %.2f\n\n", update_conv_biases_cycles);
-        
+
         printf("forward_cycles        : %.2f\n", forward_cycles);
         printf("backward_cycles       : %.2f\n", backward_cycles);
         printf("total_cycles          : %.2f\n", total_cycles);
@@ -668,7 +669,7 @@ double bin_validate(){
             /*max_pooling(&conv_t, &pool_t, NULL, NULL, 2, 'V');*/
 
             feed_forward(&pool_t, &fully_con_out, &fully_con_w, &fully_con_b, 2);
-            
+
             softmax(&fully_con_out, &softmax_out, pred, 2);
 
             correct_preds += (labels[shuffle_index[i]] == pred[0]) + (labels[shuffle_index[i+1]] == pred[1]);
