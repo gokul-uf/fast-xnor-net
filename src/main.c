@@ -386,7 +386,6 @@ void binary_net()
         #endif
 
         binarize_cycles /= N_BATCHES;
-        printf("haha\n");
         conv_cycles     /= N_BATCHES;
         pool_cycles     /= N_BATCHES;
         fully_cycles    /= N_BATCHES;
