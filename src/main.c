@@ -344,11 +344,6 @@ void binary_net()
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
             update_softmax_biases_cycles += cycles_count_stop();
 
-            /*cycles_count_start();
-            bin_update_conv_ws_bs(&fil_w, &fil_bin_w, alphas, &fil_b, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
-            update_conv_weights_cycles += cycles_count_stop();*/
-
-
             cycles_count_start();
             bin_update_conv_weights(&fil_w, &fil_bin_w, alphas, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
             update_conv_weights_cycles += cycles_count_stop();
@@ -509,10 +504,6 @@ void xnor_net()
             cycles_count_start();
             update_sotmax_biases(&fully_con_b, &softmax_out, labels, i*BATCH_SIZE, shuffle_index);
             update_softmax_biases_cycles += cycles_count_stop();
-
-            /*cycles_count_start();
-            bin_update_conv_ws_bs(&fil_w, &fil_bin_w, alphas, &fil_b, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
-            update_conv_weights_cycles += cycles_count_stop();*/
 
             cycles_count_start();
             bin_update_conv_weights(&fil_w, &fil_bin_w, alphas, &del_conv, &conv_t, &input_images, i*BATCH_SIZE, shuffle_index);
