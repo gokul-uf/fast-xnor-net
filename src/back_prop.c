@@ -866,7 +866,7 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 /*void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
 								tensor* input_images, int base, int shuffle_index[])
 {
-	INCREMENT_FLOPS(2)
+	INCREMENT_FLOPS(1)
 	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
 	double delta_w;
 	double conv_val;
@@ -2034,6 +2034,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	}
 }*/
 
+
 // batch outermost loop, no loop unrolling
 /*void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
 								tensor* input_images, int base, int shuffle_index[])
@@ -2396,6 +2397,657 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
     for (int r = 0; r < FIL_ROWS; ++r)
     {
     	for (int c = 0; c < FIL_COLS; ++c)
+    	{
+    		INCREMENT_FLOPS(21)
+
+    		// modifying delta_w to account for sign function applied on weights
+		    weight_f0 = (fil_w->data)[ind_fil_w(0, r, c)];
+		    weight_f1 = (fil_w->data)[ind_fil_w(1, r, c)];
+		    weight_f2 = (fil_w->data)[ind_fil_w(2, r, c)];
+
+		    if (weight_f0 <= 1 && weight_f0 >= -1)
+		    {
+		    	delta_ws[0][r][c] *= ( (alpha_0*weight_f0) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_ws[0][r][c] *= recip_n;
+	    	}
+
+	    	if (weight_f1 <= 1 && weight_f1 >= -1)
+		    {
+		    	delta_ws[1][r][c] *= ( (alpha_1*weight_f1) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_ws[1][r][c] *= recip_n;
+	    	}
+
+	    	if (weight_f2 <= 1 && weight_f2 >= -1)
+		    {
+		    	delta_ws[2][r][c] *= ( (alpha_2*weight_f2) +  recip_n );
+		    }
+		    else
+	    	{
+	    		delta_ws[2][r][c] *= recip_n;
+	    	}
+		    
+		    (fil_w->data)[ind_fil_w(0, r, c)] = weight_f0 - MULTIPLIER*delta_ws[0][r][c];
+		    (fil_w->data)[ind_fil_w(1, r, c)] = weight_f1 - MULTIPLIER*delta_ws[1][r][c];
+		    (fil_w->data)[ind_fil_w(2, r, c)] = weight_f2 - MULTIPLIER*delta_ws[2][r][c];
+    	}
+    }
+}*/
+
+// batch outermost loop, unroll conv rows and cols, num of filters; unroll filter rows and cols
+/*void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+								tensor* input_images, int base, int shuffle_index[])
+{
+	INCREMENT_FLOPS(1)
+	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
+	double delta_w;
+	int cur_image;
+
+	double alpha_0 = alphas[0];
+	double alpha_1 = alphas[1];
+	double alpha_2 = alphas[2];
+
+	double conv_r0c0_f0;
+	double conv_r0c1_f0;
+	double conv_r1c0_f0;
+	double conv_r1c1_f0;
+
+	double conv_r0c0_f1;
+	double conv_r0c1_f1;
+	double conv_r1c0_f1;
+	double conv_r1c1_f1;
+
+	double conv_r0c0_f2;
+	double conv_r0c1_f2;
+	double conv_r1c0_f2;
+	double conv_r1c1_f2;
+
+	double del_conv_r0c0_f0;
+	double del_conv_r0c1_f0;
+	double del_conv_r1c0_f0;
+	double del_conv_r1c1_f0;
+
+	double del_conv_r0c0_f1;
+	double del_conv_r0c1_f1;
+	double del_conv_r1c0_f1;
+	double del_conv_r1c1_f1;
+
+	double del_conv_r0c0_f2;
+	double del_conv_r0c1_f2;
+	double del_conv_r1c0_f2;
+	double del_conv_r1c1_f2;
+
+	double input_pixel_r0c0;
+	double input_pixel_r0c1;
+	double input_pixel_r1c0;
+	double input_pixel_r1c1;
+
+	double input_pixel_00;
+	double input_pixel_01;
+	double input_pixel_02;
+	double input_pixel_10;
+	double input_pixel_11;
+	double input_pixel_12;
+	double input_pixel_20;
+	double input_pixel_21;
+	double input_pixel_22;
+
+	double weight_f0;
+	double weight_f1;
+	double weight_f2;
+
+	double sum_r0c0_f0, sum_r0c1_f0, sum_r1c0_f0, sum_r1c1_f0;
+	double sum_r0c0_f1, sum_r0c1_f1, sum_r1c0_f1, sum_r1c1_f1;
+	double sum_r0c0_f2, sum_r0c1_f2, sum_r1c0_f2, sum_r1c1_f2;
+
+	double sum_r0c0_i0j0_f0, sum_r0c1_i0j0_f0, sum_r1c0_i0j0_f0, sum_r1c1_i0j0_f0;
+	double sum_r0c0_i0j1_f0, sum_r0c1_i0j1_f0, sum_r1c0_i0j1_f0, sum_r1c1_i0j1_f0;
+	double sum_r0c0_i1j0_f0, sum_r0c1_i1j0_f0, sum_r1c0_i1j0_f0, sum_r1c1_i1j0_f0;
+	double sum_r0c0_i1j1_f0, sum_r0c1_i1j1_f0, sum_r1c0_i1j1_f0, sum_r1c1_i1j1_f0;
+
+	double sum_r0c0_i0j0_f1, sum_r0c1_i0j0_f1, sum_r1c0_i0j0_f1, sum_r1c1_i0j0_f1;
+	double sum_r0c0_i0j1_f1, sum_r0c1_i0j1_f1, sum_r1c0_i0j1_f1, sum_r1c1_i0j1_f1;
+	double sum_r0c0_i1j0_f1, sum_r0c1_i1j0_f1, sum_r1c0_i1j0_f1, sum_r1c1_i1j0_f1;
+	double sum_r0c0_i1j1_f1, sum_r0c1_i1j1_f1, sum_r1c0_i1j1_f1, sum_r1c1_i1j1_f1;
+
+	double sum_r0c0_i0j0_f2, sum_r0c1_i0j0_f2, sum_r1c0_i0j0_f2, sum_r1c1_i0j0_f2;
+	double sum_r0c0_i0j1_f2, sum_r0c1_i0j1_f2, sum_r1c0_i0j1_f2, sum_r1c1_i0j1_f2;
+	double sum_r0c0_i1j0_f2, sum_r0c1_i1j0_f2, sum_r1c0_i1j0_f2, sum_r1c1_i1j0_f2;
+	double sum_r0c0_i1j1_f2, sum_r0c1_i1j1_f2, sum_r1c0_i1j1_f2, sum_r1c1_i1j1_f2;
+
+	double sum_1_f0, sum_2_f0;
+	double sum_3_f0, sum_4_f0;
+	double sum_5_f0, sum_6_f0;
+	double sum_7_f0, sum_8_f0;
+
+	double sum_1_f1, sum_2_f1;
+	double sum_3_f1, sum_4_f1;
+	double sum_5_f1, sum_6_f1;
+	double sum_7_f1, sum_8_f1;
+
+	double sum_1_f2, sum_2_f2;
+	double sum_3_f2, sum_4_f2;
+	double sum_5_f2, sum_6_f2;
+	double sum_7_f2, sum_8_f2;
+
+	double delta_ws[NUM_FILS][FIL_ROWS][FIL_COLS];
+
+	int r, c;
+
+	for (int b = 0; b < BATCH_SIZE; ++b)
+    {
+
+    	cur_image = shuffle_index[b+base];
+
+    	for (r = 0; r+1 < FIL_ROWS; r=r+2)
+		{
+
+			for (c = 0; c+1 < FIL_COLS; c=c+2)
+			{
+
+				sum_r0c0_i0j0_f0 = 0.0, sum_r0c1_i0j0_f0 = 0.0, sum_r1c0_i0j0_f0 = 0.0, sum_r1c1_i0j0_f0 = 0.0;
+				sum_r0c0_i0j1_f0 = 0.0, sum_r0c1_i0j1_f0 = 0.0, sum_r1c0_i0j1_f0 = 0.0, sum_r1c1_i0j1_f0 = 0.0;
+				sum_r0c0_i1j0_f0 = 0.0, sum_r0c1_i1j0_f0 = 0.0, sum_r1c0_i1j0_f0 = 0.0, sum_r1c1_i1j0_f0 = 0.0;
+				sum_r0c0_i1j1_f0 = 0.0, sum_r0c1_i1j1_f0 = 0.0, sum_r1c0_i1j1_f0 = 0.0, sum_r1c1_i1j1_f0 = 0.0;
+
+				sum_r0c0_i0j0_f1 = 0.0, sum_r0c1_i0j0_f1 = 0.0, sum_r1c0_i0j0_f1 = 0.0, sum_r1c1_i0j0_f1 = 0.0;
+				sum_r0c0_i0j1_f1 = 0.0, sum_r0c1_i0j1_f1 = 0.0, sum_r1c0_i0j1_f1 = 0.0, sum_r1c1_i0j1_f1 = 0.0;
+				sum_r0c0_i1j0_f1 = 0.0, sum_r0c1_i1j0_f1 = 0.0, sum_r1c0_i1j0_f1 = 0.0, sum_r1c1_i1j0_f1 = 0.0;
+				sum_r0c0_i1j1_f1 = 0.0, sum_r0c1_i1j1_f1 = 0.0, sum_r1c0_i1j1_f1 = 0.0, sum_r1c1_i1j1_f1 = 0.0;
+
+				sum_r0c0_i0j0_f2 = 0.0, sum_r0c1_i0j0_f2 = 0.0, sum_r1c0_i0j0_f2 = 0.0, sum_r1c1_i0j0_f2 = 0.0;
+				sum_r0c0_i0j1_f2 = 0.0, sum_r0c1_i0j1_f2 = 0.0, sum_r1c0_i0j1_f2 = 0.0, sum_r1c1_i0j1_f2 = 0.0;
+				sum_r0c0_i1j0_f2 = 0.0, sum_r0c1_i1j0_f2 = 0.0, sum_r1c0_i1j0_f2 = 0.0, sum_r1c1_i1j0_f2 = 0.0;
+				sum_r0c0_i1j1_f2 = 0.0, sum_r0c1_i1j1_f2 = 0.0, sum_r1c0_i1j1_f2 = 0.0, sum_r1c1_i1j1_f2 = 0.0;
+
+				for (int i = 0; i+1 < N_ROWS_CONV; i=i+2)
+				{
+
+					for (int j = 0; j+1 < N_COLS_CONV; j=j+2)
+					{
+
+						INCREMENT_FLOPS(108)
+
+						conv_r0c0_f0 = (conv_t->data)[ind_conv_out(b, 0, i  , j  )];
+						conv_r0c1_f0 = (conv_t->data)[ind_conv_out(b, 0, i  , j+1)];
+						conv_r1c0_f0 = (conv_t->data)[ind_conv_out(b, 0, i+1, j  )];
+						conv_r1c1_f0 = (conv_t->data)[ind_conv_out(b, 0, i+1, j+1)];
+
+						conv_r0c0_f1 = (conv_t->data)[ind_conv_out(b, 1, i  , j  )];
+						conv_r0c1_f1 = (conv_t->data)[ind_conv_out(b, 1, i  , j+1)];
+						conv_r1c0_f1 = (conv_t->data)[ind_conv_out(b, 1, i+1, j  )];
+						conv_r1c1_f1 = (conv_t->data)[ind_conv_out(b, 1, i+1, j+1)];
+
+						conv_r0c0_f2 = (conv_t->data)[ind_conv_out(b, 2, i  , j  )];
+						conv_r0c1_f2 = (conv_t->data)[ind_conv_out(b, 2, i  , j+1)];
+						conv_r1c0_f2 = (conv_t->data)[ind_conv_out(b, 2, i+1, j  )];
+						conv_r1c1_f2 = (conv_t->data)[ind_conv_out(b, 2, i+1, j+1)];
+
+						del_conv_r0c0_f0 = (del_conv->data)[ind_conv_out(b, 0, i  , j  )];
+						del_conv_r0c1_f0 = (del_conv->data)[ind_conv_out(b, 0, i  , j+1)];
+						del_conv_r1c0_f0 = (del_conv->data)[ind_conv_out(b, 0, i+1, j  )];
+						del_conv_r1c1_f0 = (del_conv->data)[ind_conv_out(b, 0, i+1, j+1)];
+
+						del_conv_r0c0_f1 = (del_conv->data)[ind_conv_out(b, 1, i  , j  )];
+						del_conv_r0c1_f1 = (del_conv->data)[ind_conv_out(b, 1, i  , j+1)];
+						del_conv_r1c0_f1 = (del_conv->data)[ind_conv_out(b, 1, i+1, j  )];
+						del_conv_r1c1_f1 = (del_conv->data)[ind_conv_out(b, 1, i+1, j+1)];
+
+						del_conv_r0c0_f2 = (del_conv->data)[ind_conv_out(b, 2, i  , j  )];
+						del_conv_r0c1_f2 = (del_conv->data)[ind_conv_out(b, 2, i  , j+1)];
+						del_conv_r1c0_f2 = (del_conv->data)[ind_conv_out(b, 2, i+1, j  )];
+						del_conv_r1c1_f2 = (del_conv->data)[ind_conv_out(b, 2, i+1, j+1)];
+
+
+						input_pixel_00 = (input_images->data)[ind_input_img(cur_image, i  +r, j  +c)];
+						input_pixel_01 = (input_images->data)[ind_input_img(cur_image, i  +r, j+1+c)];
+						input_pixel_02 = (input_images->data)[ind_input_img(cur_image, i  +r, j+2+c)];
+
+						input_pixel_10 = (input_images->data)[ind_input_img(cur_image, i+1+r, j  +c)];
+						input_pixel_11 = (input_images->data)[ind_input_img(cur_image, i+1+r, j+1+c)];
+						input_pixel_12 = (input_images->data)[ind_input_img(cur_image, i+1+r, j+2+c)];
+
+						input_pixel_20 = (input_images->data)[ind_input_img(cur_image, i+2+r, j  +c)];
+						input_pixel_21 = (input_images->data)[ind_input_img(cur_image, i+2+r, j+1+c)];
+						input_pixel_22 = (input_images->data)[ind_input_img(cur_image, i+2+r, j+2+c)];
+
+						// ----------------------------------------------filter 0------------------------------------------
+						if (conv_r0c0_f0 > 0.0)
+						{
+							sum_r0c0_i0j0_f0 += del_conv_r0c0_f0 * input_pixel_00;
+							sum_r0c0_i0j1_f0 += del_conv_r0c0_f0 * input_pixel_01;
+							sum_r0c0_i1j0_f0 += del_conv_r0c0_f0 * input_pixel_10;
+							sum_r0c0_i1j1_f0 += del_conv_r0c0_f0 * input_pixel_11;
+						}
+
+						if (conv_r0c1_f0 > 0.0)
+						{
+							sum_r0c1_i0j0_f0 += del_conv_r0c1_f0 * input_pixel_01;
+							sum_r0c1_i0j1_f0 += del_conv_r0c1_f0 * input_pixel_02;
+							sum_r0c1_i1j0_f0 += del_conv_r0c1_f0 * input_pixel_11;
+							sum_r0c1_i1j1_f0 += del_conv_r0c1_f0 * input_pixel_12;
+						}
+
+						if (conv_r1c0_f0 > 0.0)
+						{
+							sum_r1c0_i0j0_f0 += del_conv_r1c0_f0 * input_pixel_10;
+							sum_r1c0_i0j1_f0 += del_conv_r1c0_f0 * input_pixel_11;
+							sum_r1c0_i1j0_f0 += del_conv_r1c0_f0 * input_pixel_20;
+							sum_r1c0_i1j1_f0 += del_conv_r1c0_f0 * input_pixel_21;
+						}
+
+						if (conv_r1c1_f0 > 0.0)
+						{
+							sum_r1c1_i0j0_f0 += del_conv_r1c1_f0 * input_pixel_11;
+							sum_r1c1_i0j1_f0 += del_conv_r1c1_f0 * input_pixel_12;
+							sum_r1c1_i1j0_f0 += del_conv_r1c1_f0 * input_pixel_21;
+							sum_r1c1_i1j1_f0 += del_conv_r1c1_f0 * input_pixel_22;
+						}
+						
+						// ----------------------------------------------filter 1------------------------------------------
+						if (conv_r0c0_f1 > 0.0)
+						{
+							sum_r0c0_i0j0_f1 += del_conv_r0c0_f1 * input_pixel_00;
+							sum_r0c0_i0j1_f1 += del_conv_r0c0_f1 * input_pixel_01;
+							sum_r0c0_i1j0_f1 += del_conv_r0c0_f1 * input_pixel_10;
+							sum_r0c0_i1j1_f1 += del_conv_r0c0_f1 * input_pixel_11;
+						}
+
+						if (conv_r0c1_f1 > 0.0)
+						{
+							sum_r0c1_i0j0_f1 += del_conv_r0c1_f1 * input_pixel_01;
+							sum_r0c1_i0j1_f1 += del_conv_r0c1_f1 * input_pixel_02;
+							sum_r0c1_i1j0_f1 += del_conv_r0c1_f1 * input_pixel_11;
+							sum_r0c1_i1j1_f1 += del_conv_r0c1_f1 * input_pixel_12;
+						}
+
+						if (conv_r1c0_f1 > 0.0)
+						{
+							sum_r1c0_i0j0_f1 += del_conv_r1c0_f1 * input_pixel_10;
+							sum_r1c0_i0j1_f1 += del_conv_r1c0_f1 * input_pixel_11;
+							sum_r1c0_i1j0_f1 += del_conv_r1c0_f1 * input_pixel_20;
+							sum_r1c0_i1j1_f1 += del_conv_r1c0_f1 * input_pixel_21;
+						}
+
+						if (conv_r1c1_f1 > 0.0)
+						{
+							sum_r1c1_i0j0_f1 += del_conv_r1c1_f1 * input_pixel_11;
+							sum_r1c1_i0j1_f1 += del_conv_r1c1_f1 * input_pixel_12;
+							sum_r1c1_i1j0_f1 += del_conv_r1c1_f1 * input_pixel_21;
+							sum_r1c1_i1j1_f1 += del_conv_r1c1_f1 * input_pixel_22;
+						}
+
+						// ----------------------------------------------filter 2------------------------------------------
+						if (conv_r0c0_f2 > 0.0)
+						{
+							sum_r0c0_i0j0_f2 += del_conv_r0c0_f2 * input_pixel_00;
+							sum_r0c0_i0j1_f2 += del_conv_r0c0_f2 * input_pixel_01;
+							sum_r0c0_i1j0_f2 += del_conv_r0c0_f2 * input_pixel_10;
+							sum_r0c0_i1j1_f2 += del_conv_r0c0_f2 * input_pixel_11;
+						}
+
+						if (conv_r0c1_f2 > 0.0)
+						{
+							sum_r0c1_i0j0_f2 += del_conv_r0c1_f2 * input_pixel_01;
+							sum_r0c1_i0j1_f2 += del_conv_r0c1_f2 * input_pixel_02;
+							sum_r0c1_i1j0_f2 += del_conv_r0c1_f2 * input_pixel_11;
+							sum_r0c1_i1j1_f2 += del_conv_r0c1_f2 * input_pixel_12;
+						}
+
+						if (conv_r1c0_f2 > 0.0)
+						{
+							sum_r1c0_i0j0_f2 += del_conv_r1c0_f2 * input_pixel_10;
+							sum_r1c0_i0j1_f2 += del_conv_r1c0_f2 * input_pixel_11;
+							sum_r1c0_i1j0_f2 += del_conv_r1c0_f2 * input_pixel_20;
+							sum_r1c0_i1j1_f2 += del_conv_r1c0_f2 * input_pixel_21;
+						}
+
+						if (conv_r1c1_f2 > 0.0)
+						{
+							sum_r1c1_i0j0_f2 += del_conv_r1c1_f2 * input_pixel_11;
+							sum_r1c1_i0j1_f2 += del_conv_r1c1_f2 * input_pixel_12;
+							sum_r1c1_i1j0_f2 += del_conv_r1c1_f2 * input_pixel_21;
+							sum_r1c1_i1j1_f2 += del_conv_r1c1_f2 * input_pixel_22;
+						}
+
+						// -----------------------------------------------------------------------------------------------
+					}						
+				}
+
+				INCREMENT_FLOPS(36)
+
+				// ----------------------------------------------------------filter 0---------------------------------------------------
+				  sum_1_f0            = sum_r0c0_i0j0_f0 + sum_r0c1_i0j0_f0;
+				  sum_2_f0            = sum_r1c0_i0j0_f0 + sum_r1c1_i0j0_f0;
+				delta_ws[0][r  ][c  ] =         sum_1_f0 +         sum_2_f0;
+
+				  sum_3_f0            = sum_r0c0_i0j1_f0 + sum_r0c1_i0j1_f0;
+				  sum_4_f0            = sum_r1c0_i0j1_f0 + sum_r1c1_i0j1_f0;
+				delta_ws[0][r  ][c+1] =         sum_3_f0 +         sum_4_f0;
+
+				  sum_5_f0            = sum_r0c0_i1j0_f0 + sum_r0c1_i1j0_f0;
+				  sum_6_f0            = sum_r1c0_i1j0_f0 + sum_r1c1_i1j0_f0;
+				delta_ws[0][r+1][c  ] =         sum_5_f0 +         sum_6_f0;
+
+				  sum_7_f0            = sum_r0c0_i1j1_f0 + sum_r0c1_i1j1_f0;
+				  sum_8_f0            = sum_r1c0_i1j1_f0 + sum_r1c1_i1j1_f0;
+				delta_ws[0][r+1][c+1] =         sum_7_f0 +         sum_8_f0;
+
+				
+				// ----------------------------------------------------------filter 1---------------------------------------------------
+				  sum_1_f1            = sum_r0c0_i0j0_f1 + sum_r0c1_i0j0_f1;
+				  sum_2_f1            = sum_r1c0_i0j0_f1 + sum_r1c1_i0j0_f1;
+				delta_ws[1][r  ][c  ] =         sum_1_f1 +         sum_2_f1;
+
+				  sum_3_f1            = sum_r0c0_i0j1_f1 + sum_r0c1_i0j1_f1;
+				  sum_4_f1            = sum_r1c0_i0j1_f1 + sum_r1c1_i0j1_f1;
+				delta_ws[1][r  ][c+1] =         sum_3_f1 +         sum_4_f1;
+
+				  sum_5_f1            = sum_r0c0_i1j0_f1 + sum_r0c1_i1j0_f1;
+				  sum_6_f1            = sum_r1c0_i1j0_f1 + sum_r1c1_i1j0_f1;
+				delta_ws[1][r+1][c  ] =         sum_5_f1 +         sum_6_f1;
+
+				  sum_7_f1            = sum_r0c0_i1j1_f1 + sum_r0c1_i1j1_f1;
+				  sum_8_f1            = sum_r1c0_i1j1_f1 + sum_r1c1_i1j1_f1;
+				delta_ws[1][r+1][c+1] =         sum_7_f1 +         sum_8_f1;
+
+				// ----------------------------------------------------------filter 2---------------------------------------------------
+				  sum_1_f2            = sum_r0c0_i0j0_f2 + sum_r0c1_i0j0_f2;
+				  sum_2_f2            = sum_r1c0_i0j0_f2 + sum_r1c1_i0j0_f2;
+				delta_ws[2][r  ][c  ] =         sum_1_f2 +         sum_2_f2;
+
+				  sum_3_f2            = sum_r0c0_i0j1_f2 + sum_r0c1_i0j1_f2;
+				  sum_4_f2            = sum_r1c0_i0j1_f2 + sum_r1c1_i0j1_f2;
+				delta_ws[2][r  ][c+1] =         sum_3_f2 +         sum_4_f2;
+
+				  sum_5_f2            = sum_r0c0_i1j0_f2 + sum_r0c1_i1j0_f2;
+				  sum_6_f2            = sum_r1c0_i1j0_f2 + sum_r1c1_i1j0_f2;
+				delta_ws[2][r+1][c  ] =         sum_5_f2 +         sum_6_f2;
+
+				  sum_7_f2            = sum_r0c0_i1j1_f2 + sum_r0c1_i1j1_f2;
+				  sum_8_f2            = sum_r1c0_i1j1_f2 + sum_r1c1_i1j1_f2;
+				delta_ws[2][r+1][c+1] =         sum_7_f2 +         sum_8_f2;
+			}
+
+			// for leftover elements at the end of the row
+			for (; c < FIL_COLS; ++c)
+			{
+
+				sum_r0c0_f0 = 0.0, sum_r0c1_f0 = 0.0, sum_r1c0_f0 = 0.0, sum_r1c1_f0 = 0.0;
+				sum_r0c0_f1 = 0.0, sum_r0c1_f1 = 0.0, sum_r1c0_f1 = 0.0, sum_r1c1_f1 = 0.0;
+				sum_r0c0_f2 = 0.0, sum_r0c1_f2 = 0.0, sum_r1c0_f2 = 0.0, sum_r1c1_f2 = 0.0;
+
+				for (int i = 0; i+1 < N_ROWS_CONV; i=i+2)
+				{
+
+					for (int j = 0; j+1 < N_COLS_CONV; j=j+2)
+					{
+
+						INCREMENT_FLOPS(36)
+
+						conv_r0c0_f0 = (conv_t->data)[ind_conv_out(b, 0, i  , j  )];
+						conv_r0c1_f0 = (conv_t->data)[ind_conv_out(b, 0, i  , j+1)];
+						conv_r1c0_f0 = (conv_t->data)[ind_conv_out(b, 0, i+1, j  )];
+						conv_r1c1_f0 = (conv_t->data)[ind_conv_out(b, 0, i+1, j+1)];
+
+						conv_r0c0_f1 = (conv_t->data)[ind_conv_out(b, 1, i  , j  )];
+						conv_r0c1_f1 = (conv_t->data)[ind_conv_out(b, 1, i  , j+1)];
+						conv_r1c0_f1 = (conv_t->data)[ind_conv_out(b, 1, i+1, j  )];
+						conv_r1c1_f1 = (conv_t->data)[ind_conv_out(b, 1, i+1, j+1)];
+
+						conv_r0c0_f2 = (conv_t->data)[ind_conv_out(b, 2, i  , j  )];
+						conv_r0c1_f2 = (conv_t->data)[ind_conv_out(b, 2, i  , j+1)];
+						conv_r1c0_f2 = (conv_t->data)[ind_conv_out(b, 2, i+1, j  )];
+						conv_r1c1_f2 = (conv_t->data)[ind_conv_out(b, 2, i+1, j+1)];
+
+						del_conv_r0c0_f0 = (del_conv->data)[ind_conv_out(b, 0, i  , j  )];
+						del_conv_r0c1_f0 = (del_conv->data)[ind_conv_out(b, 0, i  , j+1)];
+						del_conv_r1c0_f0 = (del_conv->data)[ind_conv_out(b, 0, i+1, j  )];
+						del_conv_r1c1_f0 = (del_conv->data)[ind_conv_out(b, 0, i+1, j+1)];
+
+						del_conv_r0c0_f1 = (del_conv->data)[ind_conv_out(b, 1, i  , j  )];
+						del_conv_r0c1_f1 = (del_conv->data)[ind_conv_out(b, 1, i  , j+1)];
+						del_conv_r1c0_f1 = (del_conv->data)[ind_conv_out(b, 1, i+1, j  )];
+						del_conv_r1c1_f1 = (del_conv->data)[ind_conv_out(b, 1, i+1, j+1)];
+
+						del_conv_r0c0_f2 = (del_conv->data)[ind_conv_out(b, 2, i  , j  )];
+						del_conv_r0c1_f2 = (del_conv->data)[ind_conv_out(b, 2, i  , j+1)];
+						del_conv_r1c0_f2 = (del_conv->data)[ind_conv_out(b, 2, i+1, j  )];
+						del_conv_r1c1_f2 = (del_conv->data)[ind_conv_out(b, 2, i+1, j+1)];
+
+
+						input_pixel_r0c0 = (input_images->data)[ind_input_img(cur_image, i  +r, j  +c)];
+						input_pixel_r0c1 = (input_images->data)[ind_input_img(cur_image, i  +r, j+1+c)];
+						input_pixel_r1c0 = (input_images->data)[ind_input_img(cur_image, i+1+r, j  +c)];
+						input_pixel_r1c1 = (input_images->data)[ind_input_img(cur_image, i+1+r, j+1+c)];
+
+						// ----------------------------------------------filter 0------------------------------------------
+						if (conv_r0c0_f0 > 0.0)
+						{
+							sum_r0c0_f0 += del_conv_r0c0_f0 * input_pixel_r0c0;
+						}
+
+						if (conv_r0c1_f0 > 0.0)
+						{
+							sum_r0c1_f0 += del_conv_r0c1_f0 * input_pixel_r0c1;
+						}
+
+						if (conv_r1c0_f0 > 0.0)
+						{
+							sum_r1c0_f0 += del_conv_r1c0_f0 * input_pixel_r1c0;
+						}
+
+						if (conv_r1c1_f0 > 0.0)
+						{
+							sum_r1c1_f0 += del_conv_r1c1_f0 * input_pixel_r1c1;
+						}
+						
+						// ----------------------------------------------filter 1------------------------------------------
+						if (conv_r0c0_f1 > 0.0)
+						{
+							sum_r0c0_f1 += del_conv_r0c0_f1 * input_pixel_r0c0;
+						}
+
+						if (conv_r0c1_f1 > 0.0)
+						{
+							sum_r0c1_f1 += del_conv_r0c1_f1 * input_pixel_r0c1;
+						}
+
+						if (conv_r1c0_f1 > 0.0)
+						{
+							sum_r1c0_f1 += del_conv_r1c0_f1 * input_pixel_r1c0;
+						}
+
+						if (conv_r1c1_f1 > 0.0)
+						{
+							sum_r1c1_f1 += del_conv_r1c1_f1 * input_pixel_r1c1;
+						}
+
+						// ----------------------------------------------filter 2------------------------------------------
+						if (conv_r0c0_f2 > 0.0)
+						{
+							sum_r0c0_f2 += del_conv_r0c0_f2 * input_pixel_r0c0;
+						}
+
+						if (conv_r0c1_f2 > 0.0)
+						{
+							sum_r0c1_f2 += del_conv_r0c1_f2 * input_pixel_r0c1;
+						}
+
+						if (conv_r1c0_f2 > 0.0)
+						{
+							sum_r1c0_f2 += del_conv_r1c0_f2 * input_pixel_r1c0;
+						}
+
+						if (conv_r1c1_f2 > 0.0)
+						{
+							sum_r1c1_f2 += del_conv_r1c1_f2 * input_pixel_r1c1;
+						}
+					}						
+				}
+
+				INCREMENT_FLOPS(9)
+
+				  sum_1_f0 =     sum_r0c0_f0 + sum_r0c1_f0;
+				  sum_2_f0 =     sum_r1c0_f0 + sum_r1c1_f0;
+				delta_ws[0][r][c] = sum_1_f0 +    sum_2_f0;
+
+				  sum_1_f1 =     sum_r0c0_f1 + sum_r0c1_f1;
+				  sum_2_f1 =     sum_r1c0_f1 + sum_r1c1_f1;
+				delta_ws[1][r][c] = sum_1_f1 +    sum_2_f1;
+
+				  sum_1_f2 =     sum_r0c0_f2 + sum_r0c1_f2;
+				  sum_2_f2 =     sum_r1c0_f2 + sum_r1c1_f2;
+				delta_ws[2][r][c] = sum_1_f2 +    sum_2_f2;
+			}
+    	}
+
+
+    	// for leftover rows at the end
+    	for (; r < FIL_ROWS; ++r)
+		{
+
+			for (c = 0; c < FIL_COLS; ++c)
+			{
+
+				sum_r0c0_f0 = 0.0, sum_r0c1_f0 = 0.0, sum_r1c0_f0 = 0.0, sum_r1c1_f0 = 0.0;
+				sum_r0c0_f1 = 0.0, sum_r0c1_f1 = 0.0, sum_r1c0_f1 = 0.0, sum_r1c1_f1 = 0.0;
+				sum_r0c0_f2 = 0.0, sum_r0c1_f2 = 0.0, sum_r1c0_f2 = 0.0, sum_r1c1_f2 = 0.0;
+
+				for (int i = 0; i+1 < N_ROWS_CONV; i=i+2)
+				{
+
+					for (int j = 0; j+1 < N_COLS_CONV; j=j+2)
+					{
+
+						INCREMENT_FLOPS(36)
+
+						conv_r0c0_f0 = (conv_t->data)[ind_conv_out(b, 0, i  , j  )];
+						conv_r0c1_f0 = (conv_t->data)[ind_conv_out(b, 0, i  , j+1)];
+						conv_r1c0_f0 = (conv_t->data)[ind_conv_out(b, 0, i+1, j  )];
+						conv_r1c1_f0 = (conv_t->data)[ind_conv_out(b, 0, i+1, j+1)];
+
+						conv_r0c0_f1 = (conv_t->data)[ind_conv_out(b, 1, i  , j  )];
+						conv_r0c1_f1 = (conv_t->data)[ind_conv_out(b, 1, i  , j+1)];
+						conv_r1c0_f1 = (conv_t->data)[ind_conv_out(b, 1, i+1, j  )];
+						conv_r1c1_f1 = (conv_t->data)[ind_conv_out(b, 1, i+1, j+1)];
+
+						conv_r0c0_f2 = (conv_t->data)[ind_conv_out(b, 2, i  , j  )];
+						conv_r0c1_f2 = (conv_t->data)[ind_conv_out(b, 2, i  , j+1)];
+						conv_r1c0_f2 = (conv_t->data)[ind_conv_out(b, 2, i+1, j  )];
+						conv_r1c1_f2 = (conv_t->data)[ind_conv_out(b, 2, i+1, j+1)];
+
+						del_conv_r0c0_f0 = (del_conv->data)[ind_conv_out(b, 0, i  , j  )];
+						del_conv_r0c1_f0 = (del_conv->data)[ind_conv_out(b, 0, i  , j+1)];
+						del_conv_r1c0_f0 = (del_conv->data)[ind_conv_out(b, 0, i+1, j  )];
+						del_conv_r1c1_f0 = (del_conv->data)[ind_conv_out(b, 0, i+1, j+1)];
+
+						del_conv_r0c0_f1 = (del_conv->data)[ind_conv_out(b, 1, i  , j  )];
+						del_conv_r0c1_f1 = (del_conv->data)[ind_conv_out(b, 1, i  , j+1)];
+						del_conv_r1c0_f1 = (del_conv->data)[ind_conv_out(b, 1, i+1, j  )];
+						del_conv_r1c1_f1 = (del_conv->data)[ind_conv_out(b, 1, i+1, j+1)];
+
+						del_conv_r0c0_f2 = (del_conv->data)[ind_conv_out(b, 2, i  , j  )];
+						del_conv_r0c1_f2 = (del_conv->data)[ind_conv_out(b, 2, i  , j+1)];
+						del_conv_r1c0_f2 = (del_conv->data)[ind_conv_out(b, 2, i+1, j  )];
+						del_conv_r1c1_f2 = (del_conv->data)[ind_conv_out(b, 2, i+1, j+1)];
+
+
+						input_pixel_r0c0 = (input_images->data)[ind_input_img(cur_image, i  +r, j  +c)];
+						input_pixel_r0c1 = (input_images->data)[ind_input_img(cur_image, i  +r, j+1+c)];
+						input_pixel_r1c0 = (input_images->data)[ind_input_img(cur_image, i+1+r, j  +c)];
+						input_pixel_r1c1 = (input_images->data)[ind_input_img(cur_image, i+1+r, j+1+c)];
+
+						// ----------------------------------------------filter 0------------------------------------------
+						if (conv_r0c0_f0 > 0.0)
+						{
+							sum_r0c0_f0 += del_conv_r0c0_f0 * input_pixel_r0c0;
+						}
+
+						if (conv_r0c1_f0 > 0.0)
+						{
+							sum_r0c1_f0 += del_conv_r0c1_f0 * input_pixel_r0c1;
+						}
+
+						if (conv_r1c0_f0 > 0.0)
+						{
+							sum_r1c0_f0 += del_conv_r1c0_f0 * input_pixel_r1c0;
+						}
+
+						if (conv_r1c1_f0 > 0.0)
+						{
+							sum_r1c1_f0 += del_conv_r1c1_f0 * input_pixel_r1c1;
+						}
+						
+						// ----------------------------------------------filter 1------------------------------------------
+						if (conv_r0c0_f1 > 0.0)
+						{
+							sum_r0c0_f1 += del_conv_r0c0_f1 * input_pixel_r0c0;
+						}
+
+						if (conv_r0c1_f1 > 0.0)
+						{
+							sum_r0c1_f1 += del_conv_r0c1_f1 * input_pixel_r0c1;
+						}
+
+						if (conv_r1c0_f1 > 0.0)
+						{
+							sum_r1c0_f1 += del_conv_r1c0_f1 * input_pixel_r1c0;
+						}
+
+						if (conv_r1c1_f1 > 0.0)
+						{
+							sum_r1c1_f1 += del_conv_r1c1_f1 * input_pixel_r1c1;
+						}
+
+						// ----------------------------------------------filter 2------------------------------------------
+						if (conv_r0c0_f2 > 0.0)
+						{
+							sum_r0c0_f2 += del_conv_r0c0_f2 * input_pixel_r0c0;
+						}
+
+						if (conv_r0c1_f2 > 0.0)
+						{
+							sum_r0c1_f2 += del_conv_r0c1_f2 * input_pixel_r0c1;
+						}
+
+						if (conv_r1c0_f2 > 0.0)
+						{
+							sum_r1c0_f2 += del_conv_r1c0_f2 * input_pixel_r1c0;
+						}
+
+						if (conv_r1c1_f2 > 0.0)
+						{
+							sum_r1c1_f2 += del_conv_r1c1_f2 * input_pixel_r1c1;
+						}
+					}						
+				}
+
+				INCREMENT_FLOPS(9)
+
+				  sum_1_f0 =     sum_r0c0_f0 + sum_r0c1_f0;
+				  sum_2_f0 =     sum_r1c0_f0 + sum_r1c1_f0;
+				delta_ws[0][r][c] = sum_1_f0 +    sum_2_f0;
+
+				  sum_1_f1 =     sum_r0c0_f1 + sum_r0c1_f1;
+				  sum_2_f1 =     sum_r1c0_f1 + sum_r1c1_f1;
+				delta_ws[1][r][c] = sum_1_f1 +    sum_2_f1;
+
+				  sum_1_f2 =     sum_r0c0_f2 + sum_r0c1_f2;
+				  sum_2_f2 =     sum_r1c0_f2 + sum_r1c1_f2;
+				delta_ws[2][r][c] = sum_1_f2 +    sum_2_f2;
+			}
+		}
+	}
+
+    for (r = 0; r < FIL_ROWS; ++r)
+    {
+    	for (c = 0; c < FIL_COLS; ++c)
     	{
     		INCREMENT_FLOPS(21)
 
