@@ -248,7 +248,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 }*/
 
 // convolution and pooling together, Ben's changes
-void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batch_size,
+/*void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batch_size,
 	int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[],
 	int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
@@ -766,11 +766,11 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
         pool_f_index1 += POOL_SIZE;
         pool_f_index2 += POOL_SIZE;
 	}
-}
+}*/
 
 
 // convolution and pooling together
-/*
+
 void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batch_size,
 	int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[],
 	int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
@@ -1148,7 +1148,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 		}
 	}
 }
-*/
+
 
 // loop on conv rows and cols unrolled by 2, max-pooling done
 /*void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
