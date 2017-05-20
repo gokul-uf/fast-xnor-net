@@ -244,7 +244,7 @@ void normal_net()
 
                 val_acc = validate();
 
-                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
+                printf("\nNetType=%d, Epoch=%3d, Batch=%3d, train_acc=%3.2f val_acc=%3.2f \n",
                             BINARY_NET, epoch+1, i+1, train_acc, val_acc);
                 /*printf("\nPred\n");
                 print_tensor_1d(&softmax_out, 10, 0);
@@ -381,7 +381,7 @@ void binary_net()
         #ifndef COUNT_FLOPS
             train_acc = (correct_preds*100.0) / NUM_TRAIN;
             val_acc = bin_validate();
-            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
+            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f val_acc=%3.2f \n",
                                 BINARY_NET, epoch+1, train_acc, val_acc);
         #endif
 
@@ -536,7 +536,7 @@ void xnor_net()
         #ifndef COUNT_FLOPS
             train_acc = (correct_preds*100.0) / NUM_TRAIN;
             val_acc = xnor_validate();
-            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f% val_acc=%3.2f% \n",
+            printf("\nNetType=%d, Epoch=%3d, train_acc=%3.2f val_acc=%3.2f \n",
                                     BINARY_NET, epoch+1, train_acc, val_acc);
         #endif
 

@@ -248,7 +248,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 }*/
 
 // convolution and pooling together, Ben's changes
-/*void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batch_size,
+void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batch_size,
 	int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[],
 	int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
@@ -297,6 +297,8 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 
     int CONV_SIZE = NUM_FILS * N_ROWS_CONV * N_COLS_CONV;
 
+    int _2_N_COLS_CONV = 2 * N_COLS_CONV;
+
     int pool_f_index0 = 0;
     int pool_f_index1 = N_ROWS_POOL * N_COLS_POOL;
     int pool_f_index2 = N_ROWS_POOL * N_COLS_POOL * 2;
@@ -314,28 +316,41 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
         int image_r_index0 = cur_image * IMAGE_ROWS * IMAGE_COLS;
         int image_r_index1 = image_r_index0 + IMAGE_COLS;
 
-        int conv_index000 = conv_f_index000;
-        int conv_index001 = conv_f_index001;
-        int conv_index010 = conv_f_index010;
-        int conv_index011 = conv_f_index011;
-        int conv_index100 = conv_f_index100;
-        int conv_index101 = conv_f_index101;
-        int conv_index110 = conv_f_index110;
-        int conv_index111 = conv_f_index111;
-        int conv_index200 = conv_f_index200;
-        int conv_index201 = conv_f_index201;
-        int conv_index210 = conv_f_index210;
-        int conv_index211 = conv_f_index211;
+        int conv_r_index000 = conv_f_index000;
+        int conv_r_index001 = conv_f_index001;
+        int conv_r_index010 = conv_f_index010;
+        int conv_r_index011 = conv_f_index011;
+        int conv_r_index100 = conv_f_index100;
+        int conv_r_index101 = conv_f_index101;
+        int conv_r_index110 = conv_f_index110;
+        int conv_r_index111 = conv_f_index111;
+        int conv_r_index200 = conv_f_index200;
+        int conv_r_index201 = conv_f_index201;
+        int conv_r_index210 = conv_f_index210;
+        int conv_r_index211 = conv_f_index211;
 
-        int pool_r_index0 = pool_f_index0;
-        int pool_r_index1 = pool_f_index1;
-        int pool_r_index2 = pool_f_index2;
+        int pool_i_index0 = pool_f_index0;
+        int pool_i_index1 = pool_f_index1;
+        int pool_i_index2 = pool_f_index2;
 		// Unroll r and c loops by 2 so that max pooling can be merged with convolution
 		for (int r = 0, pool_i=0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
 		{
-            int pool_index0 = pool_r_index0;
-            int pool_index1 = pool_r_index1;
-            int pool_index2 = pool_r_index2;
+            int conv_c_index000 = conv_r_index000;
+            int conv_c_index001 = conv_r_index001;
+            int conv_c_index010 = conv_r_index010;
+            int conv_c_index011 = conv_r_index011;
+            int conv_c_index100 = conv_r_index100;
+            int conv_c_index101 = conv_r_index101;
+            int conv_c_index110 = conv_r_index110;
+            int conv_c_index111 = conv_r_index111;
+            int conv_c_index200 = conv_r_index200;
+            int conv_c_index201 = conv_r_index201;
+            int conv_c_index210 = conv_r_index210;
+            int conv_c_index211 = conv_r_index211;
+
+            int pool_j_index0 = pool_i_index0;
+            int pool_j_index1 = pool_i_index1;
+            int pool_j_index2 = pool_i_index2;
 			for (int c = 0, pool_j=0; c+1 < N_ROWS_CONV; c=c+2, ++pool_j)
 			{
 
@@ -349,6 +364,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 				{
 					//prev1 = (input_t->data)[ind_input_img(cur_image, r+i  , c+0  )];
 					//prev2 = (input_t->data)[ind_input_img(cur_image, r+i+1, c+0  )];
+                    //printf("%d\n", image_c_index0 == ind_input_img(cur_image, r+i, c+0));
 					prev1 = input_data[image_c_index0];
 					prev2 = input_data[image_c_index1];
 
@@ -358,6 +374,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 					{
 						input_pixel0 = prev1;
 						//input_pixel1 = (input_t->data)[ind_input_img(cur_image, r+i  , c+j+1)];
+                        //printf("%d\n", (ind_input_img(cur_image, r+i, c+j+1) == image_j_index0));
 						input_pixel1 = input_data[image_j_index0];
 						input_pixel2 = prev2;
 						//input_pixel3 = (input_t->data)[ind_input_img(cur_image, r+i+1, c+j+1)];
@@ -419,8 +436,8 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
                         image_j_index1 += 1;
 					}
 
-                    image_c_index0 += FIL_COLS;
-                    image_c_index1 += FIL_COLS;
+                    image_c_index0 += IMAGE_COLS;
+                    image_c_index1 += IMAGE_COLS;
 				}
 
 				INCREMENT_FLOPS(36)
@@ -543,18 +560,19 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 				// (conv_t->data)[ind_conv_out(b, 2, r+1, c  )] = conv_val_r1c0_f2;
 				// (conv_t->data)[ind_conv_out(b, 2, r+1, c+1)] = conv_val_r1c1_f2;
 
-				conv_data[conv_index000] = conv_val_r0c0_f0;
-				conv_data[conv_index001] = conv_val_r0c1_f0;
-				conv_data[conv_index010] = conv_val_r1c0_f0;
-				conv_data[conv_index011] = conv_val_r1c1_f0;
-				conv_data[conv_index100] = conv_val_r0c0_f1;
-				conv_data[conv_index101] = conv_val_r0c1_f1;
-				conv_data[conv_index110] = conv_val_r1c0_f1;
-				conv_data[conv_index111] = conv_val_r1c1_f1;
-				conv_data[conv_index200] = conv_val_r0c0_f2;
-				conv_data[conv_index201] = conv_val_r0c1_f2;
-				conv_data[conv_index210] = conv_val_r1c0_f2;
-				conv_data[conv_index211] = conv_val_r1c1_f2;
+                //printf("%d\n", ind_conv_out(b, 0, r, c) == conv_c_index000);
+				conv_data[conv_c_index000] = conv_val_r0c0_f0;
+				conv_data[conv_c_index001] = conv_val_r0c1_f0;
+				conv_data[conv_c_index010] = conv_val_r1c0_f0;
+				conv_data[conv_c_index011] = conv_val_r1c1_f0;
+				conv_data[conv_c_index100] = conv_val_r0c0_f1;
+				conv_data[conv_c_index101] = conv_val_r0c1_f1;
+				conv_data[conv_c_index110] = conv_val_r1c0_f1;
+				conv_data[conv_c_index111] = conv_val_r1c1_f1;
+				conv_data[conv_c_index200] = conv_val_r0c0_f2;
+				conv_data[conv_c_index201] = conv_val_r0c1_f2;
+				conv_data[conv_c_index210] = conv_val_r1c0_f2;
+				conv_data[conv_c_index211] = conv_val_r1c1_f2;
 
 				// --------------------------------------------Max Pooling-------------------------------------
 				INCREMENT_FLOPS(9)
@@ -600,7 +618,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 					max_j_f0 = max_2_j_f0;
 				}
 
-				pool_data[pool_index0] = max_f0;
+				pool_data[pool_j_index0] = max_f0;
 				pool_index_i[b][0][pool_i][pool_j] = max_i_f0;
 				pool_index_j[b][0][pool_i][pool_j] = max_j_f0;
 
@@ -645,7 +663,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 					max_j_f1 = max_2_j_f1;
 				}
 
-				pool_data[pool_index1] = max_f1;
+				pool_data[pool_j_index1] = max_f1;
 				pool_index_i[b][1][pool_i][pool_j] = max_i_f1;
 				pool_index_j[b][1][pool_i][pool_j] = max_j_f1;
 
@@ -689,34 +707,47 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 					max_j_f2 = max_2_j_f2;
 				}
 
-				pool_data[pool_index2] = max_f2;
+				pool_data[pool_j_index2] = max_f2;
 				pool_index_i[b][2][pool_i][pool_j] = max_i_f2;
 				pool_index_j[b][2][pool_i][pool_j] = max_j_f2;
 
-                conv_index000 += 2;
-                conv_index001 += 2;
-                conv_index010 += 2;
-                conv_index011 += 2;
-                conv_index100 += 2;
-                conv_index101 += 2;
-                conv_index110 += 2;
-                conv_index111 += 2;
-                conv_index200 += 2;
-                conv_index201 += 2;
-                conv_index210 += 2;
-                conv_index211 += 2;
+                conv_c_index000 += 2;
+                conv_c_index001 += 2;
+                conv_c_index010 += 2;
+                conv_c_index011 += 2;
+                conv_c_index100 += 2;
+                conv_c_index101 += 2;
+                conv_c_index110 += 2;
+                conv_c_index111 += 2;
+                conv_c_index200 += 2;
+                conv_c_index201 += 2;
+                conv_c_index210 += 2;
+                conv_c_index211 += 2;
 
-                pool_index0 += 1;
-                pool_index1 += 1;
-                pool_index2 += 1;
+                pool_j_index0 += 1;
+                pool_j_index1 += 1;
+                pool_j_index2 += 1;
 			}
 
             image_r_index0 += 2 * IMAGE_COLS;
             image_r_index1 = image_r_index0 + IMAGE_COLS;
 
-            pool_r_index0 += N_COLS_POOL;
-            pool_r_index1 += N_COLS_POOL;
-            pool_r_index2 += N_COLS_POOL;
+            conv_r_index000 += _2_N_COLS_CONV;
+            conv_r_index001 += _2_N_COLS_CONV;
+            conv_r_index010 += _2_N_COLS_CONV;
+            conv_r_index011 += _2_N_COLS_CONV;
+            conv_r_index100 += _2_N_COLS_CONV;
+            conv_r_index101 += _2_N_COLS_CONV;
+            conv_r_index110 += _2_N_COLS_CONV;
+            conv_r_index111 += _2_N_COLS_CONV;
+            conv_r_index200 += _2_N_COLS_CONV;
+            conv_r_index201 += _2_N_COLS_CONV;
+            conv_r_index210 += _2_N_COLS_CONV;
+            conv_r_index211 += _2_N_COLS_CONV;
+
+            pool_i_index0 += N_COLS_POOL;
+            pool_i_index1 += N_COLS_POOL;
+            pool_i_index2 += N_COLS_POOL;
 		}
         conv_f_index000 += CONV_SIZE;
         conv_f_index001 += CONV_SIZE;
@@ -735,10 +766,11 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
         pool_f_index1 += POOL_SIZE;
         pool_f_index2 += POOL_SIZE;
 	}
-}*/
+}
 
 
 // convolution and pooling together
+/*
 void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batch_size,
 	int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[],
 	int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
@@ -855,7 +887,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 
 					}
 				}
-			
+
 				INCREMENT_FLOPS(36)
 
 				// -----------------------------------------------filter 0 ----------------------------------------------
@@ -979,7 +1011,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 				// --------------------------------------------Max Pooling-------------------------------------
 				INCREMENT_FLOPS(9)
 
-				
+
 				// -------------------------------------------Filter 0----------------------------------------
 				if (conv_val_r0c0_f0 > conv_val_r0c1_f0)
 				{
@@ -1116,6 +1148,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 		}
 	}
 }
+*/
 
 // loop on conv rows and cols unrolled by 2, max-pooling done
 /*void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
@@ -1363,6 +1396,7 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
     int conv_b_index201 = conv_b_index200 + 1;
     int conv_b_index211 = conv_b_index210 + N_COLS_CONV;
 
+    int _2_N_COLS_CONV = 2 * N_COLS_CONV;
     int CONV_SIZE = NUM_FILS * SINGLE_FIL_CONV_SIZE;
     int THREE_FIL_CONV_SIZE = 3 * SINGLE_FIL_CONV_SIZE;
 
@@ -1408,24 +1442,37 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 		 	alpha_f2 = alphas[f+2];
 			 bias_f2 = fil_b.data[f+2];
 
-            int conv_index000 = conv_f_index000;
-            int conv_index001 = conv_f_index001;
-            int conv_index010 = conv_f_index010;
-            int conv_index011 = conv_f_index011;
-            int conv_index100 = conv_f_index100;
-            int conv_index101 = conv_f_index101;
-            int conv_index110 = conv_f_index110;
-            int conv_index111 = conv_f_index111;
-            int conv_index200 = conv_f_index200;
-            int conv_index201 = conv_f_index201;
-            int conv_index210 = conv_f_index210;
-            int conv_index211 = conv_f_index211;
+            int conv_r_index000 = conv_f_index000;
+            int conv_r_index001 = conv_f_index001;
+            int conv_r_index010 = conv_f_index010;
+            int conv_r_index011 = conv_f_index011;
+            int conv_r_index100 = conv_f_index100;
+            int conv_r_index101 = conv_f_index101;
+            int conv_r_index110 = conv_f_index110;
+            int conv_r_index111 = conv_f_index111;
+            int conv_r_index200 = conv_f_index200;
+            int conv_r_index201 = conv_f_index201;
+            int conv_r_index210 = conv_f_index210;
+            int conv_r_index211 = conv_f_index211;
 
             //int pool_r_index0 = pool_f_index0;
             //int pool_r_index1 = pool_f_index1;
             //int pool_r_index2 = pool_f_index2;
 			for (int r = 0, pool_i = 0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
 			{
+                int conv_c_index000 = conv_r_index000;
+                int conv_c_index001 = conv_r_index001;
+                int conv_c_index010 = conv_r_index010;
+                int conv_c_index011 = conv_r_index011;
+                int conv_c_index100 = conv_r_index100;
+                int conv_c_index101 = conv_r_index101;
+                int conv_c_index110 = conv_r_index110;
+                int conv_c_index111 = conv_r_index111;
+                int conv_c_index200 = conv_r_index200;
+                int conv_c_index201 = conv_r_index201;
+                int conv_c_index210 = conv_r_index210;
+                int conv_c_index211 = conv_r_index211;
+
                 //int pool_index0 = pool_r_index0;
                 //int pool_index1 = pool_r_index1;
                 //int pool_index2 = pool_r_index2;
@@ -1613,18 +1660,18 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 					//(conv_t->data)[ind_conv_out(b, f+2, r+1, c  )] = conv_val2_f2;
 					//(conv_t->data)[ind_conv_out(b, f+2, r+1, c+1)] = conv_val3_f2;
 
-					conv_data[conv_index000] = conv_val0_f0;
-					conv_data[conv_index001] = conv_val1_f0;
-					conv_data[conv_index010] = conv_val2_f0;
-					conv_data[conv_index011] = conv_val3_f0;
-					conv_data[conv_index100] = conv_val0_f1;
-					conv_data[conv_index101] = conv_val1_f1;
-					conv_data[conv_index110] = conv_val2_f1;
-					conv_data[conv_index111] = conv_val3_f1;
-					conv_data[conv_index200] = conv_val0_f2;
-					conv_data[conv_index201] = conv_val1_f2;
-					conv_data[conv_index210] = conv_val2_f2;
-					conv_data[conv_index211] = conv_val3_f2;
+					conv_data[conv_c_index000] = conv_val0_f0;
+					conv_data[conv_c_index001] = conv_val1_f0;
+					conv_data[conv_c_index010] = conv_val2_f0;
+					conv_data[conv_c_index011] = conv_val3_f0;
+					conv_data[conv_c_index100] = conv_val0_f1;
+					conv_data[conv_c_index101] = conv_val1_f1;
+					conv_data[conv_c_index110] = conv_val2_f1;
+					conv_data[conv_c_index111] = conv_val3_f1;
+					conv_data[conv_c_index200] = conv_val0_f2;
+					conv_data[conv_c_index201] = conv_val1_f2;
+					conv_data[conv_c_index210] = conv_val2_f2;
+					conv_data[conv_c_index211] = conv_val3_f2;
 
 					// ----------------------------------------------Max pooling---------------------------------------
 
@@ -1767,23 +1814,35 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 					pool_index_i[b][f+2][pool_i][pool_j] = ind_i_f2;
 					pool_index_j[b][f+2][pool_i][pool_j] = ind_j_f2;
 
-                    conv_index000 += 2;
-                    conv_index001 += 2;
-                    conv_index010 += 2;
-                    conv_index011 += 2;
-                    conv_index100 += 2;
-                    conv_index101 += 2;
-                    conv_index110 += 2;
-                    conv_index111 += 2;
-                    conv_index200 += 2;
-                    conv_index201 += 2;
-                    conv_index210 += 2;
-                    conv_index211 += 2;
+                    conv_c_index000 += 2;
+                    conv_c_index001 += 2;
+                    conv_c_index010 += 2;
+                    conv_c_index011 += 2;
+                    conv_c_index100 += 2;
+                    conv_c_index101 += 2;
+                    conv_c_index110 += 2;
+                    conv_c_index111 += 2;
+                    conv_c_index200 += 2;
+                    conv_c_index201 += 2;
+                    conv_c_index210 += 2;
+                    conv_c_index211 += 2;
 
                     //pool_index0 += 1;
                     //pool_index1 += 1;
                     //pool_index2 += 1;
 				}
+                conv_r_index000 += _2_N_COLS_CONV;
+                conv_r_index001 += _2_N_COLS_CONV;
+                conv_r_index010 += _2_N_COLS_CONV;
+                conv_r_index011 += _2_N_COLS_CONV;
+                conv_r_index100 += _2_N_COLS_CONV;
+                conv_r_index101 += _2_N_COLS_CONV;
+                conv_r_index110 += _2_N_COLS_CONV;
+                conv_r_index111 += _2_N_COLS_CONV;
+                conv_r_index200 += _2_N_COLS_CONV;
+                conv_r_index201 += _2_N_COLS_CONV;
+                conv_r_index210 += _2_N_COLS_CONV;
+                conv_r_index211 += _2_N_COLS_CONV;
                 //pool_r_index0 += N_COLS_POOL;
                 //pool_r_index1 += N_COLS_POOL;
                 //pool_r_index2 += N_COLS_POOL;
@@ -1814,13 +1873,17 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 			alpha = alphas[f];
 			bias = fil_b.data[f];
 
-            int conv_index000 = conv_f_index000;
-            int conv_index001 = conv_f_index001;
-            int conv_index010 = conv_f_index010;
-            int conv_index011 = conv_f_index011;
+            int conv_r_index000 = conv_f_index000;
+            int conv_r_index001 = conv_f_index001;
+            int conv_r_index010 = conv_f_index010;
+            int conv_r_index011 = conv_f_index011;
 
 			for (int r = 0, pool_i = 0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
 			{
+                int conv_c_index000 = conv_r_index000;
+                int conv_c_index001 = conv_r_index001;
+                int conv_c_index010 = conv_r_index010;
+                int conv_c_index011 = conv_r_index011;
 
 				for (int c = 0, pool_j = 0; c+1 < N_COLS_CONV; c=c+2, ++pool_j)
 				{
@@ -1904,10 +1967,10 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 					//(conv_t->data)[ind_conv_out(b, f, r+1, c  )] = conv_val2;
 					//(conv_t->data)[ind_conv_out(b, f, r+1, c+1)] = conv_val3;
 
-					conv_data[conv_index000] = conv_val0;
-					conv_data[conv_index001] = conv_val1;
-					conv_data[conv_index010] = conv_val2;
-					conv_data[conv_index011] = conv_val3;
+					conv_data[conv_c_index000] = conv_val0;
+					conv_data[conv_c_index001] = conv_val1;
+					conv_data[conv_c_index010] = conv_val2;
+					conv_data[conv_c_index011] = conv_val3;
 
 
 					// ----------------------------------------------Max pooling---------------------------------------
@@ -1958,11 +2021,15 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 					pool_index_i[b][f][pool_i][pool_j] = ind_i;
 					pool_index_j[b][f][pool_i][pool_j] = ind_j;
 
-                    conv_index000 += 2;
-                    conv_index001 += 2;
-                    conv_index010 += 2;
-                    conv_index011 += 2;
+                    conv_c_index000 += 2;
+                    conv_c_index001 += 2;
+                    conv_c_index010 += 2;
+                    conv_c_index011 += 2;
 				}
+                conv_c_index000 += _2_N_COLS_CONV;
+                conv_c_index001 += _2_N_COLS_CONV;
+                conv_c_index010 += _2_N_COLS_CONV;
+                conv_c_index011 += _2_N_COLS_CONV;
 			}
             conv_f_index100 += SINGLE_FIL_CONV_SIZE;
             conv_f_index000 += SINGLE_FIL_CONV_SIZE;
