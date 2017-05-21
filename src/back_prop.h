@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+
+#include "x86intrin.h"
+#include "pmmintrin.h"
+#include "immintrin.h"
+#include "xmmintrin.h"
+
 #include "tensor.h"
 #include "common.h"
 #include "pool_layer.h"
