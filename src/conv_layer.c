@@ -493,8 +493,8 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 }
 
 // convolution and pooling together
-/*
-void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batch_size,
+
+/*void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batch_size,
 	int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[],
 	int pool_index_i[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
@@ -870,8 +870,8 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 			}
 		}
 	}
-}
-*/
+}*/
+
 
 // loop on conv rows and cols unrolled by 2, max-pooling done, pool indexes saved; loop on number of filters unrolled
 void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
@@ -1767,10 +1767,6 @@ void xnor_convolve_pool_validation(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][
 		}
 	}
 }
-
-
-
-
 
 
 void initialize_filters(tensor* fil_w, tensor* fil_b)
