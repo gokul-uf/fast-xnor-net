@@ -33,17 +33,17 @@ void bin_convolution(tensor* input_t, tensor* conv_t, int batch_size,
 			{
 				for (int j = 0; j < N_ROWS_CONV; ++j)
 				{
-					(conv_t->data)[offset(conv_t,b,j,i,f)] = bin_convolve(input_t, i, j, b+base, 
+					(conv_t->data)[offset(conv_t,b,j,i,f)] = bin_convolve(input_t, i, j, b+base,
 																fil_bin_w, alphas, fil_b, f, shuffle_index);
 				}
 			}
-			
+
 		}
 	}
 }
 
-void xnor_convolution(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], 
-						tensor* conv_t, int batch_size, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
+void xnor_convolution(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
+						tensor* conv_t, int batch_size, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS],
 						double alphas[NUM_FILS], tensor fil_b, int base, int shuffle_index[]){
 	for (int b = 0; b < batch_size; ++b)
 	{
@@ -53,11 +53,11 @@ void xnor_convolution(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], 
 			{
 				for (int j = 0; j < N_ROWS_CONV; ++j)
 				{
-					(conv_t->data)[offset(conv_t,b,j,i,f)] = xnor_convolve(bin_input_images, betas, i, j, b, 
+					(conv_t->data)[offset(conv_t,b,j,i,f)] = xnor_convolve(bin_input_images, betas, i, j, b,
 																fil_bin_w, alphas, fil_b, f);
 				}
 			}
-			
+
 		}
 	}
 }
@@ -107,7 +107,7 @@ void print_bin_filters(int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS], double alpha
 		{
 			for (int j = 0; j < FIL_COLS; ++j)
 			{
-				printf("%3d, ", bin_fil_w[k][i][j]);				
+				printf("%3d, ", bin_fil_w[k][i][j]);
 			}
 			printf("\n");
 		}
@@ -123,7 +123,7 @@ double convolve(tensor* t, int r, int c, int image_num, tensor* fil_w, tensor* f
 	{
 		for (int j = 0; j < FIL_COLS; ++j)
 		{
-            for (int k = 0; k < FIL_DEPTH; ++k){
+      for (int k = 0; k < FIL_DEPTH; ++k){
 			    conv_val += (fil_w->data)[offset(fil_w, f, j, i, k)] * (t->data)[offset(t, shuffle_index[image_num], c+j, r+i, k)];
             }
 		}
@@ -148,6 +148,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 	{
 		for (int j = 0; j < FIL_COLS; ++j)
 		{
+			INCREMENT_FLOPS(1)
 			if (fil_bin_w[f][i][j] == 1)
 			{
 				conv_val += (t->data)[offset(t, shuffle_index[image_num], c+j, r+i, 0)];
@@ -158,7 +159,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 			}
 		}
 	}
-
+	INCREMENT_FLOPS(3)
 	conv_val *= alphas[f];
 
 	conv_val += fil_b.data[offset(&fil_b, f, 0, 0, 0)];
@@ -173,7 +174,7 @@ double bin_convolve(tensor* t, int r, int c, int image_num, int fil_bin_w[NUM_FI
 }
 
 double xnor_convolve(int t[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV],
-						int r, int c, int batch, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS], 
+						int r, int c, int batch, int fil_bin_w[NUM_FILS][FIL_ROWS][FIL_COLS],
 						double alphas[NUM_FILS], tensor fil_b, int f){
 
 	double conv_val = 0.0;
@@ -181,14 +182,14 @@ double xnor_convolve(int t[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], double betas[BAT
 	{
 		for (int j = 0; j < FIL_COLS; ++j)
 		{
-
+			INCREMENT_FLOPS(2)
 			// XNOR operation
 			//conv_val += ( t[batch][i+r][j+c] == fil_bin_w[f][i][j] );
 
 			conv_val += ( t[batch][i+r][j+c] * fil_bin_w[f][i][j] );
 		}
 	}
-
+INCREMENT_FLOPS(4)
 	conv_val *= alphas[f]*betas[batch][r][c];
 
 	conv_val += fil_b.data[offset(&fil_b, f, 0, 0, 0)];

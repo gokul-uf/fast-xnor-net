@@ -10,6 +10,7 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 		{
 			for (int c = 0; c < FIL_COLS; ++c)
 			{
+				INCREMENT_FLOPS(4)
 				double mat_val = (fil_w->data)[offset(fil_w, f, c, r, 0)];
 
 				if (mat_val < 0.0)
@@ -29,12 +30,12 @@ void binarize_filters(tensor* fil_w, int bin_fil_w[NUM_FILS][FIL_ROWS][FIL_COLS]
 				sum += abs_val;
 			}
 		}
-
+		INCREMENT_FLOPS(1)
 		alphas[f] = sum/n;
 	}
 }
 
-void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], int shuffle_index[], 
+void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], int shuffle_index[],
 					double betas[BATCH_SIZE][N_ROWS_CONV][N_COLS_CONV], int batch_size, int base){
 	int n = FIL_ROWS * FIL_COLS;
 
@@ -49,6 +50,7 @@ void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE
 				{
 					for (int c = 0; c < FIL_COLS; ++c)
 					{
+						INCREMENT_FLOPS(3)
 						double mat_val = (input_images->data)[offset(input_images, shuffle_index[b+base], j+c, i+r, 0)];
 
 						if (mat_val < 0.0)
@@ -59,7 +61,7 @@ void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE
 						sum += mat_val;
 					}
 				}
-
+				INCREMENT_FLOPS(1)
 				betas[b][i][j] = sum/n;
 			}
 		}
@@ -71,6 +73,7 @@ void bin_activation(tensor* input_images, int bin_input_images[BATCH_SIZE][IMAGE
 		{
 			for (int c = 0; c < IMAGE_COLS; ++c)
 			{
+				INCREMENT_FLOPS(1)
 				double mat_val = (input_images->data)[offset(input_images, shuffle_index[b+base], c, r, 0)];
 
 				if (mat_val < 0.0)

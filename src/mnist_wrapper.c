@@ -34,7 +34,7 @@ void read_mnist_images_labels(char* images_path, char* labels_path, tensor* inpu
         // Read magic number from image file
         fread(&magic_number_images, sizeof(magic_number_images), 1, fp_images);
         magic_number_images = ReverseInt(magic_number_images);
-        if(magic_number_images != 2051) 
+        if(magic_number_images != 2051)
     	{
     		printf("Invalid MNIST image file!\n");
     	}
@@ -42,14 +42,14 @@ void read_mnist_images_labels(char* images_path, char* labels_path, tensor* inpu
     	// Read magic number from label file
     	fread(&magic_number_labels, sizeof(magic_number_labels), 1, fp_labels);
         magic_number_labels = ReverseInt(magic_number_labels);
-        if(magic_number_labels != 2049) 
+        if(magic_number_labels != 2049)
     	{
     		printf("Invalid MNIST label file!\n");
     	}
 
     	// Read number of images from image file
         fread(&NUM_IMAGES, sizeof(NUM_IMAGES), 1, fp_images);
-        NUM_IMAGES = ReverseInt(NUM_IMAGES);
+        NUM_IMAGES =  ReverseInt(NUM_IMAGES);
 
         // Read number of labels from label file
         fread(&NUM_LABELS, sizeof(NUM_LABELS), 1, fp_labels);
@@ -88,7 +88,7 @@ void read_mnist_images_labels(char* images_path, char* labels_path, tensor* inpu
         	fread(&temp_char, sizeof(unsigned char), 1 , fp_labels);
         	(*labels)[i] = (int)temp_char;
         }
-        
+
         fclose(fp_images);
         fclose(fp_labels);
 
@@ -137,7 +137,7 @@ void test_reverse_int()
     PRINT_INT_TO_BINARY(i)
 
     printf("i in big endian=%d\n", i);
-    
+
     i = ReverseInt(i);
     PRINT_INT_TO_BINARY(i)
     printf("i in little endian=%d\n", i);

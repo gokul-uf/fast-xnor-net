@@ -27,5 +27,30 @@ extern int N_ROWS_CONV;
 extern int N_COLS_CONV;
 extern int N_ROWS_POOL;
 extern int N_COLS_POOL;
+extern int TOTAL_FLOPS;
+extern int NUM_TRAIN;
+extern int N_BATCHES;
+//#define COUNT_FLOPS
+
+// conditional compilation of flop counts
+
+// Binary net no unrolling flops: 2166176
+//   XNOR net no unrolling flops: 3061056
+
+#ifdef COUNT_FLOPS
+#define NUM_EPOCHS 				1
+#define COUNT_BATCHES			1
+#define INCREMENT_FLOPS(i)		TOTAL_FLOPS += i;
+#define PRINT_FLOPS()			printf("Total flops=%d\n", TOTAL_FLOPS);
+#define PRINT_PERF(cycles)		printf("performace =%f flops/cycle\n", 1.0*TOTAL_FLOPS/cycles);
+
+#else
+#define NUM_EPOCHS 				20
+#define COUNT_BATCHES			NUM_TRAIN/BATCH_SIZE
+#define INCREMENT_FLOPS(i)		;
+#define PRINT_FLOPS()  			printf("Total flops=2736047\n"); //binary net = 1775972, xnor net = 2390692
+#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*2736047/cycles);
+
+#endif
 
 #endif
