@@ -1,6 +1,11 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#include "x86intrin.h"
+#include "pmmintrin.h"
+#include "immintrin.h"
+#include "xmmintrin.h"
+
 #define BATCH_SIZE 10
 #define NUM_VAL 10000
 #define NUM_FILS 3
@@ -29,8 +34,8 @@
 #define NUM_EPOCHS 				20
 #define COUNT_BATCHES			NUM_TRAIN/BATCH_SIZE
 #define INCREMENT_FLOPS(i)		;
-#define PRINT_FLOPS()  			printf("Total flops=1828154\n"); //binary net = 1828154, xnor net = 2442874
-#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*1828154/cycles);
+#define PRINT_FLOPS()  			printf("Total flops=1845434\n"); //binary net = 1828154, xnor net = 2442874
+#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*1845434/cycles);
 
 #endif
 
