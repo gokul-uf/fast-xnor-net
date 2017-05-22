@@ -15,7 +15,7 @@
 #define POOL_DIM 2
 #define N_DIGS 10
 #define LEARN_RATE 0.01
-#define BINARY_NET 1
+#define BINARY_NET 2
 //#define COUNT_FLOPS
 
 // conditional compilation of flop counts
