@@ -18,6 +18,7 @@ cmake --build build --config Release
 ./bin/FNC_XNORNET
 ```
 
+
 ## Project Structure
 ├── CMakeLists.txt
 
