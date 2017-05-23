@@ -60,7 +60,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 	double conv_val_r1c0_f0, conv_val_r1c0_f1, conv_val_r1c0_f2;
 	double conv_val_r1c1_f0, conv_val_r1c1_f1, conv_val_r1c1_f2;
 
-
 	__m256d m_conv_val_f0, m_conv_val_f1, m_conv_val_f2;
 	__m256d m_alpha_f0 = _mm256_set1_pd(alphas[0]);
 	__m256d m_alpha_f1 = _mm256_set1_pd(alphas[1]);
@@ -77,16 +76,8 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 
 	__m256d m_input_pixel;
 
-	//double input_pixel0, input_pixel1, input_pixel2, input_pixel3;
 	int cur_image;
-	/*
-	double alpha_f0 = alphas[0];
-	double alpha_f1 = alphas[1];
-	double alpha_f2 = alphas[2];
-	double bias_f0 = fil_b.data[0];
-	double bias_f1 = fil_b.data[1];
-	double bias_f2 = fil_b.data[2];
-	*/
+
 	double max_1_f0,   max_2_f0,     max_f0;
 	int  max_1_i_f0, max_1_j_f0, max_2_i_f0, max_2_j_f0, max_i_f0, max_j_f0;
 	double max_1_f1,   max_2_f1,     max_f1;
@@ -157,12 +148,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
             int pool_j_index2 = pool_i_index2;
 			for (int c = 0, pool_j=0; c+1 < N_ROWS_CONV; c=c+2, ++pool_j)
 			{
-				/*
-				conv_val_r0c0_f0 = 0.0, conv_val_r0c0_f1 = 0.0, conv_val_r0c0_f2 = 0.0;
-				conv_val_r0c1_f0 = 0.0, conv_val_r0c1_f1 = 0.0, conv_val_r0c1_f2 = 0.0;
-				conv_val_r1c0_f0 = 0.0, conv_val_r1c0_f1 = 0.0, conv_val_r1c0_f2 = 0.0;
-				conv_val_r1c1_f0 = 0.0, conv_val_r1c1_f1 = 0.0, conv_val_r1c1_f2 = 0.0;
-				*/
 
 				m_conv_val_f0 = _mm256_set1_pd(0.0);
 				m_conv_val_f1 = _mm256_set1_pd(0.0);
@@ -172,88 +157,42 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
         int image_c_index1 = image_r_index1 + c;
 				for (int i = 0; i < FIL_ROWS; ++i)
 				{
-					//prev1 = (input_t->data)[ind_input_img(cur_image, r+i  , c+0  )];
-					//prev2 = (input_t->data)[ind_input_img(cur_image, r+i+1, c+0  )];
-                    //printf("%d\n", image_c_index0 == ind_input_img(cur_image, r+i, c+0));
 					prev1 = input_data[image_c_index0];
 					prev2 = input_data[image_c_index1];
           int image_j_index0 = image_c_index0+1;
           int image_j_index1 = image_c_index1+1;
 					for (int j = 0; j < FIL_COLS; ++j)
 					{
-						/*
-						input_pixel0 = prev1;
-						input_pixel1 = input_data[image_j_index0];
-						input_pixel2 = prev2;
-						input_pixel3 = input_data[image_j_index1];
-						*/
-						m_input_pixel = _mm256_set_pd(prev1, input_data[image_j_index0], prev2, input_data[image_j_index1]);
+						m_input_pixel = _mm256_set_pd(input_data[image_j_index1], prev2, input_data[image_j_index0], prev1);
 						INCREMENT_FLOPS(12)
 						// --------------------------------------------filter 0-------------------------------------
 						if (fil_bin_w[0][i][j] == 1)
 						{
-							/*
-							conv_val_r0c0_f0 += input_pixel0;
-							conv_val_r0c1_f0 += input_pixel1;
-							conv_val_r1c0_f0 += input_pixel2;
-							conv_val_r1c1_f0 += input_pixel3;
-							*/
 							m_conv_val_f0 = _mm256_add_pd(m_conv_val_f0, m_input_pixel);
 						}
 						else
 						{
-							/*
-							conv_val_r0c0_f0 -= input_pixel0;
-							conv_val_r0c1_f0 -= input_pixel1;
-							conv_val_r1c0_f0 -= input_pixel2;
-							conv_val_r1c1_f0 -= input_pixel3;
-							*/
 							m_conv_val_f0 = _mm256_sub_pd(m_conv_val_f0, m_input_pixel);
 						}
 						// --------------------------------------------filter 1-----------------------------------
 						if (fil_bin_w[1][i][j] == 1)
 						{
-							/*
-							conv_val_r0c0_f1 += input_pixel0;
-							conv_val_r0c1_f1 += input_pixel1;
-							conv_val_r1c0_f1 += input_pixel2;
-							conv_val_r1c1_f1 += input_pixel3;
-							*/
 							m_conv_val_f1 = _mm256_add_pd(m_conv_val_f1, m_input_pixel);
 						}
 						else
 						{
-							/*
-							conv_val_r0c0_f1 -= input_pixel0;
-							conv_val_r0c1_f1 -= input_pixel1;
-							conv_val_r1c0_f1 -= input_pixel2;
-							conv_val_r1c1_f1 -= input_pixel3;
-							*/
 							m_conv_val_f1 = _mm256_sub_pd(m_conv_val_f1, m_input_pixel);
 						}
 						// -------------------------------------------filter 2----------------------------------------------
 						if (fil_bin_w[2][i][j] == 1)
 						{
-							/*
-							conv_val_r0c0_f2 += input_pixel0;
-							conv_val_r0c1_f2 += input_pixel1;
-							conv_val_r1c0_f2 += input_pixel2;
-							conv_val_r1c1_f2 += input_pixel3;
-							*/
 							m_conv_val_f2 = _mm256_add_pd(m_conv_val_f2, m_input_pixel);
 						}
 						else
 						{
-							/*
-							conv_val_r0c0_f2 -= input_pixel0;
-							conv_val_r0c1_f2 -= input_pixel1;
-							conv_val_r1c0_f2 -= input_pixel2;
-							conv_val_r1c1_f2 -= input_pixel3;
-							*/
 							m_conv_val_f2 = _mm256_add_pd(m_conv_val_f2, m_input_pixel);
 						}
-						//prev1 = input_pixel1;
-						//prev2 = input_pixel3;
+
 						prev1 = input_data[image_j_index0];
 						prev2 = input_data[image_j_index1];
             image_j_index0 += 1;
@@ -264,104 +203,33 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 				}
 				INCREMENT_FLOPS(48)
 				// -----------------------------------------------filter 0 ----------------------------------------------
-				/*conv_val_r0c0_f0 *= alpha_f0;
-				conv_val_r0c0_f0 +=  bias_f0;
-				conv_val_r0c1_f0 *= alpha_f0;
-				conv_val_r0c1_f0 +=  bias_f0;
-				conv_val_r1c0_f0 *= alpha_f0;
-				conv_val_r1c0_f0 +=  bias_f0;
-				conv_val_r1c1_f0 *= alpha_f0;
-				conv_val_r1c1_f0 +=  bias_f0;
-				*/
+
 				m_conv_val_f0 = _mm256_mul_pd(m_conv_val_f0, m_alpha_f0);
 				m_conv_val_f0 = _mm256_add_pd(m_conv_val_f0, m_bias_f0);
 
 				// -----------------------------------------------filter 1---------------------------------------------
-				/*conv_val_r0c0_f1 *= alpha_f1;
-				conv_val_r0c0_f1 +=  bias_f1;
-				conv_val_r0c1_f1 *= alpha_f1;
-				conv_val_r0c1_f1 +=  bias_f1;
-				conv_val_r1c0_f1 *= alpha_f1;
-				conv_val_r1c0_f1 +=  bias_f1;
-				conv_val_r1c1_f1 *= alpha_f1;
-				conv_val_r1c1_f1 +=  bias_f1;
-				*/
+
 				m_conv_val_f1 = _mm256_mul_pd(m_conv_val_f1, m_alpha_f1);
 				m_conv_val_f1 = _mm256_add_pd(m_conv_val_f1, m_bias_f1);				// -----------------------------------------------filter 2---------------------------------------------
-				/*conv_val_r0c0_f2 *= alpha_f2;
-				conv_val_r0c0_f2 +=  bias_f2;
-				conv_val_r0c1_f2 *= alpha_f2;
-				conv_val_r0c1_f2 +=  bias_f2;
-				conv_val_r1c0_f2 *= alpha_f2;
-				conv_val_r1c0_f2 +=  bias_f2;
-				conv_val_r1c1_f2 *= alpha_f2;
-				conv_val_r1c1_f2 +=  bias_f2;
-				*/
+
 				m_conv_val_f2 = _mm256_mul_pd(m_conv_val_f2, m_alpha_f2);
 				m_conv_val_f2 = _mm256_add_pd(m_conv_val_f2, m_bias_f2);
 				// applying ReLU
 				// -------------------------------------------filter 0------------------------------------------------
-				/*if (conv_val_r0c0_f0 < 0.0)
-				{
-					conv_val_r0c0_f0 = 0.0;
-				}
-				if (conv_val_r0c1_f0 < 0.0)
-				{
-					conv_val_r0c1_f0 = 0.0;
-				}
-				if (conv_val_r1c0_f0 < 0.0)
-				{
-					conv_val_r1c0_f0 = 0.0;
-				}
-				if (conv_val_r1c1_f0 < 0.0)
-				{
-					conv_val_r1c1_f0 = 0.0;
-				}
-				*/
+
 				m_conv_val_f0 = _mm256_and_pd(m_conv_val_f0, _mm256_cmp_pd(m_conv_val_f0, zeroes_p, 0x0d));
 				// -------------------------------------------filter 1------------------------------------------------
-				/*if (conv_val_r0c0_f1 < 0.0)
-				{
-					conv_val_r0c0_f1 = 0.0;
-				}
-				if (conv_val_r0c1_f1 < 0.0)
-				{
-					conv_val_r0c1_f1 = 0.0;
-				}
-				if (conv_val_r1c0_f1 < 0.0)
-				{
-					conv_val_r1c0_f1 = 0.0;
-				}
-				if (conv_val_r1c1_f1 < 0.0)
-				{
-					conv_val_r1c1_f1 = 0.0;
-				}
-				*/
+
 				m_conv_val_f1 = _mm256_and_pd(m_conv_val_f1, _mm256_cmp_pd(m_conv_val_f1, zeroes_p, 0x0d));
 				// -------------------------------------------filter 2------------------------------------------------
-				/*if (conv_val_r0c0_f2 < 0.0)
-				{
-					conv_val_r0c0_f2 = 0.0;
-				}
-				if (conv_val_r0c1_f2 < 0.0)
-				{
-					conv_val_r0c1_f2 = 0.0;
-				}
-				if (conv_val_r1c0_f2 < 0.0)
-				{
-					conv_val_r1c0_f2 = 0.0;
-				}
-				if (conv_val_r1c1_f2 < 0.0)
-				{
-					conv_val_r1c1_f2 = 0.0;
-				} */
+
 				m_conv_val_f2 = _mm256_and_pd(m_conv_val_f2, _mm256_cmp_pd(m_conv_val_f2, zeroes_p, 0x0d));
 
 				double tmp_f0[4], tmp_f1[4], tmp_f2[4];
       	_mm256_store_pd(tmp_f0, m_conv_val_f0);
 				_mm256_store_pd(tmp_f1, m_conv_val_f1);
 				_mm256_store_pd(tmp_f2, m_conv_val_f2);
-				/*
+
 				conv_val_r0c0_f0 = tmp_f0[0];
 				conv_val_r0c1_f0 = tmp_f0[1];
 				conv_val_r1c0_f0 = tmp_f0[2];
@@ -374,20 +242,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 				conv_val_r0c1_f2 = tmp_f2[1];
 				conv_val_r1c0_f2 = tmp_f2[2];
 				conv_val_r1c1_f2 = tmp_f2[3];
-				*/
-				conv_val_r0c0_f0 = tmp_f0[3];
-				conv_val_r0c1_f0 = tmp_f0[2];
-				conv_val_r1c0_f0 = tmp_f0[1];
-				conv_val_r1c1_f0 = tmp_f0[0];
-				conv_val_r0c0_f1 = tmp_f1[3];
-				conv_val_r0c1_f1 = tmp_f1[2];
-				conv_val_r1c0_f1 = tmp_f1[1];
-				conv_val_r1c1_f1 = tmp_f1[0];
-				conv_val_r0c0_f2 = tmp_f2[3];
-				conv_val_r0c1_f2 = tmp_f2[2];
-				conv_val_r1c0_f2 = tmp_f2[1];
-				conv_val_r1c1_f2 = tmp_f2[0];
-				
+
 				conv_data[conv_c_index000] = conv_val_r0c0_f0;
 				conv_data[conv_c_index001] = conv_val_r0c1_f0;
 				conv_data[conv_c_index010] = conv_val_r1c0_f0;
@@ -406,7 +261,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 				// -------------------------------------------Filter 0----------------------------------------
 				if (conv_val_r0c0_f0 > conv_val_r0c1_f0)
 				{
-					  max_1_f0 = conv_val_r0c0_f0;
+					max_1_f0 = conv_val_r0c0_f0;
 					max_1_i_f0 = r;
 					max_1_j_f0 = c;
 				}
@@ -446,7 +301,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 				// -------------------------------------------Filter 1----------------------------------------
 				if (conv_val_r0c0_f1 > conv_val_r0c1_f1)
 				{
-					  max_1_f1 = conv_val_r0c0_f1;
+					max_1_f1 = conv_val_r0c0_f1;
 					max_1_i_f1 = r;
 					max_1_j_f1 = c;
 				}
@@ -1017,36 +872,36 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 
 	int f;
 
-    int SINGLE_FIL_CONV_SIZE = N_ROWS_CONV * N_COLS_CONV;
+  int SINGLE_FIL_CONV_SIZE = N_ROWS_CONV * N_COLS_CONV;
 
-    int conv_b_index100 = N_ROWS_CONV * N_COLS_CONV;
-    int conv_b_index000 = 0;
-    int conv_b_index001 = 1;
-    int conv_b_index110 = conv_b_index100 + N_COLS_CONV;
-    int conv_b_index101 = conv_b_index100 + 1;
-    int conv_b_index111 = conv_b_index110 + 1;
-    int conv_b_index200 = 2 * N_ROWS_CONV * N_COLS_CONV;
-    int conv_b_index010 = N_COLS_CONV;
-    int conv_b_index011 = N_COLS_CONV + 1;
-    int conv_b_index210 = conv_b_index200 + N_COLS_CONV;
-    int conv_b_index201 = conv_b_index200 + 1;
-    int conv_b_index211 = conv_b_index210 + 1;
+  int conv_b_index100 = N_ROWS_CONV * N_COLS_CONV;
+  int conv_b_index000 = 0;
+  int conv_b_index001 = 1;
+  int conv_b_index110 = conv_b_index100 + N_COLS_CONV;
+  int conv_b_index101 = conv_b_index100 + 1;
+  int conv_b_index111 = conv_b_index110 + 1;
+  int conv_b_index200 = 2 * N_ROWS_CONV * N_COLS_CONV;
+  int conv_b_index010 = N_COLS_CONV;
+  int conv_b_index011 = N_COLS_CONV + 1;
+  int conv_b_index210 = conv_b_index200 + N_COLS_CONV;
+  int conv_b_index201 = conv_b_index200 + 1;
+  int conv_b_index211 = conv_b_index210 + 1;
 
-    int _2_N_COLS_CONV = 2 * N_COLS_CONV;
-    int CONV_SIZE = NUM_FILS * SINGLE_FIL_CONV_SIZE;
-    int THREE_FIL_CONV_SIZE = 3 * SINGLE_FIL_CONV_SIZE;
+  int _2_N_COLS_CONV = 2 * N_COLS_CONV;
+  int CONV_SIZE = NUM_FILS * SINGLE_FIL_CONV_SIZE;
+  int THREE_FIL_CONV_SIZE = 3 * SINGLE_FIL_CONV_SIZE;
 
-    //int SINGLE_FIL_POOL_SIZE = N_ROWS_POOL * N_COLS_POOL;
+  //int SINGLE_FIL_POOL_SIZE = N_ROWS_POOL * N_COLS_POOL;
 
-    //int pool_b_index0 = 0;
-    //int pool_b_index1 = N_ROWS_POOL * N_COLS_POOL;
-    //int pool_b_index2 = N_ROWS_POOL * N_COLS_POOL * 2;
+  //int pool_b_index0 = 0;
+  //int pool_b_index1 = N_ROWS_POOL * N_COLS_POOL;
+  //int pool_b_index2 = N_ROWS_POOL * N_COLS_POOL * 2;
 
-    //int POOL_SIZE = NUM_FILS * N_ROWS_POOL * N_COLS_POOL;
-    //int THREE_FIL_POOL_SIZE = 3 * SINGLE_FIL_POOL_SIZE;
+  //int POOL_SIZE = NUM_FILS * N_ROWS_POOL * N_COLS_POOL;
+  //int THREE_FIL_POOL_SIZE = 3 * SINGLE_FIL_POOL_SIZE;
 
-    double* conv_data = conv_t->data;
-    double* pool_data = pool_t->data;
+  double* conv_data = conv_t->data;
+  double* pool_data = pool_t->data;
 
 	for (int b = 0; b < batch_size; ++b)
 	{
