@@ -440,37 +440,25 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 	double conv_val_r0c1_f0, conv_val_r0c1_f1, conv_val_r0c1_f2;
 	double conv_val_r1c0_f0, conv_val_r1c0_f1, conv_val_r1c0_f2;
 	double conv_val_r1c1_f0, conv_val_r1c1_f1, conv_val_r1c1_f2;
-
 	double input_pixel0, input_pixel1, input_pixel2, input_pixel3;
-
 	int cur_image;
-
 	double alpha_f0 = alphas[0];
 	double alpha_f1 = alphas[1];
 	double alpha_f2 = alphas[2];
-
 	double bias_f0 = fil_b.data[0];
 	double bias_f1 = fil_b.data[1];
 	double bias_f2 = fil_b.data[2];
-
 	double max_1_f0,   max_2_f0,     max_f0;
 	int  max_1_i_f0, max_1_j_f0, max_2_i_f0, max_2_j_f0, max_i_f0, max_j_f0;
-
 	double max_1_f1,   max_2_f1,     max_f1;
 	int  max_1_i_f1, max_1_j_f1, max_2_i_f1, max_2_j_f1, max_i_f1, max_j_f1;
-
 	double max_1_f2,   max_2_f2,    max_f2;
 	int  max_1_i_f2, max_1_j_f2, max_2_i_f2, max_2_j_f2, max_i_f2, max_j_f2;
-
 	int pool_i, pool_j;
-
 	double prev1, prev2;
-
-
 	for (int b = 0; b < batch_size; ++b)
 	{
 		cur_image = shuffle_index[b+base];
-
 		// Unroll r and c loops by 2 so that max pooling can be merged with convolution
 		for (int r = 0, pool_i=0; r+1 < N_ROWS_CONV; r=r+2, ++pool_i)
 		{
@@ -480,20 +468,16 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 				conv_val_r0c1_f0 = 0.0, conv_val_r0c1_f1 = 0.0, conv_val_r0c1_f2 = 0.0;
 				conv_val_r1c0_f0 = 0.0, conv_val_r1c0_f1 = 0.0, conv_val_r1c0_f2 = 0.0;
 				conv_val_r1c1_f0 = 0.0, conv_val_r1c1_f1 = 0.0, conv_val_r1c1_f2 = 0.0;
-
 				for (int i = 0; i < FIL_ROWS; ++i)
 				{
-
 					prev1 = (input_t->data)[ind_input_img(cur_image, r+i  , c+0  )];
 					prev2 = (input_t->data)[ind_input_img(cur_image, r+i+1, c+0  )];
-
 					for (int j = 0; j < FIL_COLS; ++j)
 					{
 						input_pixel0 = prev1;
 						input_pixel1 = (input_t->data)[ind_input_img(cur_image, r+i  , c+j+1)];
 						input_pixel2 = prev2;
 						input_pixel3 = (input_t->data)[ind_input_img(cur_image, r+i+1, c+j+1)];
-
 						INCREMENT_FLOPS(12)
 						// --------------------------------------------filter 0-------------------------------------
 						if (fil_bin_w[0][i][j] == 1)
@@ -510,7 +494,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 							conv_val_r1c0_f0 -= input_pixel2;
 							conv_val_r1c1_f0 -= input_pixel3;
 						}
-
 						// --------------------------------------------filter 1-----------------------------------
 						if (fil_bin_w[1][i][j] == 1)
 						{
@@ -526,7 +509,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 							conv_val_r1c0_f1 -= input_pixel2;
 							conv_val_r1c1_f1 -= input_pixel3;
 						}
-
 						// -------------------------------------------filter 2----------------------------------------------
 						if (fil_bin_w[2][i][j] == 1)
 						{
@@ -542,137 +524,104 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 							conv_val_r1c0_f2 -= input_pixel2;
 							conv_val_r1c1_f2 -= input_pixel3;
 						}
-
 						prev1 = input_pixel1;
 						prev2 = input_pixel3;
-
 					}
 				}
-
 				INCREMENT_FLOPS(36)
-
 				// -----------------------------------------------filter 0 ----------------------------------------------
 				conv_val_r0c0_f0 *= alpha_f0;
 				conv_val_r0c0_f0 +=  bias_f0;
-
 				conv_val_r0c1_f0 *= alpha_f0;
 				conv_val_r0c1_f0 +=  bias_f0;
-
 				conv_val_r1c0_f0 *= alpha_f0;
 				conv_val_r1c0_f0 +=  bias_f0;
-
 				conv_val_r1c1_f0 *= alpha_f0;
 				conv_val_r1c1_f0 +=  bias_f0;
-
 				// -----------------------------------------------filter 1---------------------------------------------
 				conv_val_r0c0_f1 *= alpha_f1;
 				conv_val_r0c0_f1 +=  bias_f1;
-
 				conv_val_r0c1_f1 *= alpha_f1;
 				conv_val_r0c1_f1 +=  bias_f1;
-
 				conv_val_r1c0_f1 *= alpha_f1;
 				conv_val_r1c0_f1 +=  bias_f1;
-
 				conv_val_r1c1_f1 *= alpha_f1;
 				conv_val_r1c1_f1 +=  bias_f1;
-
 				// -----------------------------------------------filter 2---------------------------------------------
 				conv_val_r0c0_f2 *= alpha_f2;
 				conv_val_r0c0_f2 +=  bias_f2;
-
 				conv_val_r0c1_f2 *= alpha_f2;
 				conv_val_r0c1_f2 +=  bias_f2;
-
 				conv_val_r1c0_f2 *= alpha_f2;
 				conv_val_r1c0_f2 +=  bias_f2;
-
 				conv_val_r1c1_f2 *= alpha_f2;
 				conv_val_r1c1_f2 +=  bias_f2;
-
 				// applying ReLU
 				// -------------------------------------------filter 0------------------------------------------------
 				if (conv_val_r0c0_f0 < 0.0)
 				{
 					conv_val_r0c0_f0 = 0.0;
 				}
-
 				if (conv_val_r0c1_f0 < 0.0)
 				{
 					conv_val_r0c1_f0 = 0.0;
 				}
-
 				if (conv_val_r1c0_f0 < 0.0)
 				{
 					conv_val_r1c0_f0 = 0.0;
 				}
-
 				if (conv_val_r1c1_f0 < 0.0)
 				{
 					conv_val_r1c1_f0 = 0.0;
 				}
-
 				// -------------------------------------------filter 1------------------------------------------------
 				if (conv_val_r0c0_f1 < 0.0)
 				{
 					conv_val_r0c0_f1 = 0.0;
 				}
-
 				if (conv_val_r0c1_f1 < 0.0)
 				{
 					conv_val_r0c1_f1 = 0.0;
 				}
-
 				if (conv_val_r1c0_f1 < 0.0)
 				{
 					conv_val_r1c0_f1 = 0.0;
 				}
-
 				if (conv_val_r1c1_f1 < 0.0)
 				{
 					conv_val_r1c1_f1 = 0.0;
 				}
-
 				// -------------------------------------------filter 2------------------------------------------------
 				if (conv_val_r0c0_f2 < 0.0)
 				{
 					conv_val_r0c0_f2 = 0.0;
 				}
-
 				if (conv_val_r0c1_f2 < 0.0)
 				{
 					conv_val_r0c1_f2 = 0.0;
 				}
-
 				if (conv_val_r1c0_f2 < 0.0)
 				{
 					conv_val_r1c0_f2 = 0.0;
 				}
-
 				if (conv_val_r1c1_f2 < 0.0)
 				{
 					conv_val_r1c1_f2 = 0.0;
 				}
-
 				(conv_t->data)[ind_conv_out(b, 0, r  , c  )] = conv_val_r0c0_f0;
 				(conv_t->data)[ind_conv_out(b, 0, r  , c+1)] = conv_val_r0c1_f0;
 				(conv_t->data)[ind_conv_out(b, 0, r+1, c  )] = conv_val_r1c0_f0;
 				(conv_t->data)[ind_conv_out(b, 0, r+1, c+1)] = conv_val_r1c1_f0;
-
 				(conv_t->data)[ind_conv_out(b, 1, r  , c  )] = conv_val_r0c0_f1;
 				(conv_t->data)[ind_conv_out(b, 1, r  , c+1)] = conv_val_r0c1_f1;
 				(conv_t->data)[ind_conv_out(b, 1, r+1, c  )] = conv_val_r1c0_f1;
 				(conv_t->data)[ind_conv_out(b, 1, r+1, c+1)] = conv_val_r1c1_f1;
-
 				(conv_t->data)[ind_conv_out(b, 2, r  , c  )] = conv_val_r0c0_f2;
 				(conv_t->data)[ind_conv_out(b, 2, r  , c+1)] = conv_val_r0c1_f2;
 				(conv_t->data)[ind_conv_out(b, 2, r+1, c  )] = conv_val_r1c0_f2;
 				(conv_t->data)[ind_conv_out(b, 2, r+1, c+1)] = conv_val_r1c1_f2;
-
 				// --------------------------------------------Max Pooling-------------------------------------
 				INCREMENT_FLOPS(9)
-
-
 				// -------------------------------------------Filter 0----------------------------------------
 				if (conv_val_r0c0_f0 > conv_val_r0c1_f0)
 				{
@@ -686,7 +635,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_1_i_f0 = r;
 					max_1_j_f0 = c+1;
 				}
-
 				if (conv_val_r1c0_f0 > conv_val_r1c1_f0)
 				{
 					  max_2_f0 = conv_val_r1c0_f0;
@@ -699,7 +647,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_2_i_f0 = r+1;
 					max_2_j_f0 = c+1;
 				}
-
 				if (max_1_f0 > max_2_f0)
 				{
 					  max_f0 =   max_1_f0;
@@ -712,12 +659,9 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_i_f0 = max_2_i_f0;
 					max_j_f0 = max_2_j_f0;
 				}
-
 				(pool_t->data)[ind_pool_out(b, 0, pool_i, pool_j)] = max_f0;
 				pool_index_i[b][0][pool_i][pool_j] = max_i_f0;
 				pool_index_j[b][0][pool_i][pool_j] = max_j_f0;
-
-
 				// -------------------------------------------Filter 1----------------------------------------
 				if (conv_val_r0c0_f1 > conv_val_r0c1_f1)
 				{
@@ -731,7 +675,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_1_i_f1 = r;
 					max_1_j_f1 = c+1;
 				}
-
 				if (conv_val_r1c0_f1 > conv_val_r1c1_f1)
 				{
 					  max_2_f1 = conv_val_r1c0_f1;
@@ -744,7 +687,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_2_i_f1 = r+1;
 					max_2_j_f1 = c+1;
 				}
-
 				if (max_1_f1 > max_2_f1)
 				{
 					  max_f1 =   max_1_f1;
@@ -757,11 +699,9 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_i_f1 = max_2_i_f1;
 					max_j_f1 = max_2_j_f1;
 				}
-
 				(pool_t->data)[ind_pool_out(b, 1, pool_i, pool_j)] = max_f1;
 				pool_index_i[b][1][pool_i][pool_j] = max_i_f1;
 				pool_index_j[b][1][pool_i][pool_j] = max_j_f1;
-
 				// -------------------------------------------Filter 2----------------------------------------
 				if (conv_val_r0c0_f2 > conv_val_r0c1_f2)
 				{
@@ -775,7 +715,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_1_i_f2 = r;
 					max_1_j_f2 = c+1;
 				}
-
 				if (conv_val_r1c0_f2 > conv_val_r1c1_f2)
 				{
 					  max_2_f2 = conv_val_r1c0_f2;
@@ -788,7 +727,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_2_i_f2 = r+1;
 					max_2_j_f2 = c+1;
 				}
-
 				if (max_1_f2 > max_2_f2)
 				{
 					  max_f2 =   max_1_f2;
@@ -801,7 +739,6 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					max_i_f2 = max_2_i_f2;
 					max_j_f2 = max_2_j_f2;
 				}
-
 				(pool_t->data)[ind_pool_out(b, 2, pool_i, pool_j)] = max_f2;
 				pool_index_i[b][2][pool_i][pool_j] = max_i_f2;
 				pool_index_j[b][2][pool_i][pool_j] = max_j_f2;
