@@ -247,9 +247,9 @@ double MULTIPLIER;
 	double mat_val_f0, mat_val_f1, mat_val_f2;
 
 	// access in this order
-	double* delta_ws = calloc(N_ROWS_POOL * N_COLS_POOL * NUM_FILS * (N_DIGS+2), sizeof(double));
+	double* delta_ws = calloc(N_ROWS_POOL * N_COLS_POOL * NUM_FILS * N_DIGS, sizeof(double));
 
-	int index_0_f0, index_1_f0, index_2_f0, index_base;
+	int index_0_f0, index_1_f0, index_2_f0, index_base_d, index_base_f, index_base_r, index_base_c;
 	int index_0_f1, index_1_f1, index_2_f1;
 	int index_0_f2, index_1_f2, index_2_f2;
 
@@ -268,9 +268,12 @@ double MULTIPLIER;
 	__m256d delta_0_p, delta_1_p, delta_2_p;
 
 
+	__m256d delta_ws_0_r0_p;
+	__m256d delta_ws_1_r1_p;
+	__m256d delta_ws_2_r2_p;
+	__m256d delta_ws_3_r3_p;
+
 	__m256d delta_ws_0_f0_p;
-	__m256d delta_ws_1_f0_p;
-	__m256d delta_ws_2_f0_p;
 
 	__m256d delta_ws_0_f1_p;
 	__m256d delta_ws_1_f1_p;
@@ -280,9 +283,10 @@ double MULTIPLIER;
 	__m256d delta_ws_1_f2_p;
 	__m256d delta_ws_2_f2_p;
 
-	__m256d mat_val_f0_p;
-	__m256d mat_val_f1_p;
-	__m256d mat_val_f2_p;
+	__m256d mat_val_r0_p;
+	__m256d mat_val_r1_p;
+	__m256d mat_val_r2_p;
+	__m256d mat_val_r3_p;
 
 	__m256d w_0_f0_p;
 	__m256d w_1_f0_p;
@@ -296,238 +300,108 @@ double MULTIPLIER;
 	__m256d w_1_f2_p;
 	__m256d w_2_f2_p;
 
+	__m256d and_p;
 
-	d_0_p   = _mm256_set_pd(3, 2, 1, 0);
-	d_1_p   = _mm256_set_pd(7, 6, 5, 4);
-	d_2_p   = _mm256_set_pd(0, 0, 9, 8);
 
 	for (int b = 0; b < BATCH_SIZE; ++b)
 	{
 
-		true_label = labels[shuffle_index[base+b]];
-
+		true_label   = labels[shuffle_index[base+b]];
 		true_label_p = _mm256_set1_pd(true_label);
 
-		softmax_out_0_p = _mm256_loadu_pd( (softmax_out->data) + ind_softmax_out(b, 0) );
-		softmax_out_1_p = _mm256_loadu_pd( (softmax_out->data) + ind_softmax_out(b, 4) );
-		softmax_out_2_p = _mm256_loadu_pd( (softmax_out->data) + ind_softmax_out(b, 8) );
-
-		vmask_0    = _mm256_cmp_pd(   true_label_p, d_0_p, 0x10); // 0x10 => EQ.
-		delta_0_p  = _mm256_sub_pd(softmax_out_0_p, _mm256_and_pd(ones_p, vmask_0) );
-
-		vmask_1    = _mm256_cmp_pd(   true_label_p, d_1_p, 0x10);
-		delta_1_p  = _mm256_sub_pd(softmax_out_1_p, _mm256_and_pd(ones_p, vmask_1) );
-
-		vmask_2    = _mm256_cmp_pd(   true_label_p, d_2_p, 0x10);
-		delta_2_p  = _mm256_sub_pd(softmax_out_2_p, _mm256_and_pd(ones_p, vmask_2) );
-
-		for (int r = 0; r < N_ROWS_POOL; ++r)
+		for (int d = 0; d < N_DIGS; ++d)
 		{
 
-			index_base = (r * N_COLS_POOL*NUM_FILS*N_DIGS);
+			index_base_d = ( d * NUM_FILS*N_ROWS_POOL*N_COLS_POOL );
 
-			for (int c = 0; c < N_COLS_POOL; ++c)
+			vmask_0 = _mm256_cmp_pd(   true_label_p, _mm256_set1_pd(d), 0x10); // 0x10 => EQ.
+			and_p   = _mm256_and_pd(ones_p, vmask_0);
+
+			softmax_out_0_p = _mm256_set1_pd( (softmax_out->data)[ind_softmax_out(b, d)] );
+			delta_0_p       = _mm256_sub_pd(softmax_out_0_p, and_p);
+
+			for (int f = 0; f < NUM_FILS; ++f)
 			{
-				INCREMENT_FLOPS(60)
 
-				index_0_f0 = index_base + (c * NUM_FILS*N_DIGS);
-				index_1_f0 = index_0_f0 + 4;
-				index_2_f0 = index_0_f0 + 8;
+				index_base_f = index_base_d + ( f * N_ROWS_POOL*N_COLS_POOL );
 
-				index_0_f1 = index_base + (c * NUM_FILS*N_DIGS) + (1 * N_DIGS);
-				index_1_f1 = index_0_f1 + 4;
-				index_2_f1 = index_0_f1 + 8;
+				for (int r = 0; r+3 < N_ROWS_POOL; r=r+4)
+				{
 
-				index_0_f2 = index_base + (c * NUM_FILS*N_DIGS) + (2 * N_DIGS);
-				index_1_f2 = index_0_f2 + 4;
-				index_2_f2 = index_0_f2 + 8;
+					int index_base_r0 = index_base_f + ( (r  ) * N_COLS_POOL);
+					int index_base_r1 = index_base_f + ( (r+1) * N_COLS_POOL);
+					int index_base_r2 = index_base_f + ( (r+2) * N_COLS_POOL);
+					int index_base_r3 = index_base_f + ( (r+3) * N_COLS_POOL);
 
-				delta_ws_0_f0_p = _mm256_loadu_pd(delta_ws + index_0_f0);
-				delta_ws_1_f0_p = _mm256_loadu_pd(delta_ws + index_1_f0);
-				delta_ws_2_f0_p = _mm256_loadu_pd(delta_ws + index_2_f0);
+					for (int c = 0; c+3 < N_COLS_POOL; c=c+4)
+					{
+						INCREMENT_FLOPS(60)
 
-				delta_ws_0_f1_p = _mm256_loadu_pd(delta_ws + index_0_f1);
-				delta_ws_1_f1_p = _mm256_loadu_pd(delta_ws + index_1_f1);
-				delta_ws_2_f1_p = _mm256_loadu_pd(delta_ws + index_2_f1);
+						int index_r0_c = index_base_r0 + c;
+						int index_r1_c = index_base_r1 + c;
+						int index_r2_c = index_base_r2 + c;
+						int index_r3_c = index_base_r3 + c;
 
-				delta_ws_0_f2_p = _mm256_loadu_pd(delta_ws + index_0_f2);
-				delta_ws_1_f2_p = _mm256_loadu_pd(delta_ws + index_1_f2);
-				delta_ws_2_f2_p = _mm256_loadu_pd(delta_ws + index_2_f2);
+						delta_ws_0_r0_p = _mm256_loadu_pd( delta_ws + index_r0_c);
+						delta_ws_1_r1_p = _mm256_loadu_pd( delta_ws + index_r1_c);
+						delta_ws_2_r2_p = _mm256_loadu_pd( delta_ws + index_r2_c);
+						delta_ws_3_r3_p = _mm256_loadu_pd( delta_ws + index_r3_c);
 
-				mat_val_f0 = (pool_t->data)[ind_pool_out(b, 0, r, c)];
-				mat_val_f1 = (pool_t->data)[ind_pool_out(b, 1, r, c)];
-				mat_val_f2 = (pool_t->data)[ind_pool_out(b, 2, r, c)];
+						mat_val_r0_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r  , c) );
+						mat_val_r1_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+1, c) );
+						mat_val_r2_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+2, c) );
+						mat_val_r3_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+3, c) );
 
-				mat_val_f0_p = _mm256_set1_pd(mat_val_f0);
-				mat_val_f1_p = _mm256_set1_pd(mat_val_f1);
-				mat_val_f2_p = _mm256_set1_pd(mat_val_f2);
+						delta_ws_0_r0_p = _mm256_add_pd( delta_ws_0_r0_p, _mm256_mul_pd( delta_0_p, mat_val_r0_p ) );
+						delta_ws_1_r1_p = _mm256_add_pd( delta_ws_1_r1_p, _mm256_mul_pd( delta_0_p, mat_val_r1_p ) );
+						delta_ws_2_r2_p = _mm256_add_pd( delta_ws_2_r2_p, _mm256_mul_pd( delta_0_p, mat_val_r2_p ) );
+						delta_ws_3_r3_p = _mm256_add_pd( delta_ws_3_r3_p, _mm256_mul_pd( delta_0_p, mat_val_r3_p ) );
 
-
-				delta_ws_0_f0_p = _mm256_add_pd( delta_ws_0_f0_p, _mm256_mul_pd( delta_0_p, mat_val_f0_p ) );
-				delta_ws_1_f0_p = _mm256_add_pd( delta_ws_1_f0_p, _mm256_mul_pd( delta_1_p, mat_val_f0_p ) );
-				delta_ws_2_f0_p = _mm256_add_pd( delta_ws_2_f0_p, _mm256_mul_pd( delta_2_p, mat_val_f0_p ) );
-
-				delta_ws_0_f1_p = _mm256_add_pd( delta_ws_0_f1_p, _mm256_mul_pd( delta_0_p, mat_val_f1_p ) );
-				delta_ws_1_f1_p = _mm256_add_pd( delta_ws_1_f1_p, _mm256_mul_pd( delta_1_p, mat_val_f1_p ) );
-				delta_ws_2_f1_p = _mm256_add_pd( delta_ws_2_f1_p, _mm256_mul_pd( delta_2_p, mat_val_f1_p ) );
-
-				delta_ws_0_f2_p = _mm256_add_pd( delta_ws_0_f2_p, _mm256_mul_pd( delta_0_p, mat_val_f2_p ) );
-				delta_ws_1_f2_p = _mm256_add_pd( delta_ws_1_f2_p, _mm256_mul_pd( delta_1_p, mat_val_f2_p ) );
-				delta_ws_2_f2_p = _mm256_add_pd( delta_ws_2_f2_p, _mm256_mul_pd( delta_2_p, mat_val_f2_p ) );
-
-
-				_mm256_storeu_pd(delta_ws + index_0_f0, delta_ws_0_f0_p);
-				_mm256_storeu_pd(delta_ws + index_1_f0, delta_ws_1_f0_p);
-				_mm256_storeu_pd(delta_ws + index_2_f0, delta_ws_2_f0_p);
-
-				_mm256_storeu_pd(delta_ws + index_0_f1, delta_ws_0_f1_p);
-				_mm256_storeu_pd(delta_ws + index_1_f1, delta_ws_1_f1_p);
-				_mm256_storeu_pd(delta_ws + index_2_f1, delta_ws_2_f1_p);
-
-				_mm256_storeu_pd(delta_ws + index_0_f2, delta_ws_0_f2_p);
-				_mm256_storeu_pd(delta_ws + index_1_f2, delta_ws_1_f2_p);
-				_mm256_storeu_pd(delta_ws + index_2_f2, delta_ws_2_f2_p);
+						_mm256_storeu_pd(delta_ws + index_r0_c, delta_ws_0_r0_p);
+						_mm256_storeu_pd(delta_ws + index_r1_c, delta_ws_1_r1_p);
+						_mm256_storeu_pd(delta_ws + index_r2_c, delta_ws_2_r2_p);
+						_mm256_storeu_pd(delta_ws + index_r3_c, delta_ws_3_r3_p);
+					}
+				}
 			}
 		}
 	}
 
 	// update the weights
-	for (int r = 0; r < N_ROWS_POOL; ++r)
+	for (int d = 0; d < N_DIGS; ++d)
 	{
 
-		index_base = (r * N_COLS_POOL*NUM_FILS*N_DIGS);
+		index_base_d = ( d * NUM_FILS*N_ROWS_POOL*N_COLS_POOL );
 
-		for (int c = 0; c < N_COLS_POOL; ++c)
+		for (int f = 0; f < NUM_FILS; ++f)
 		{
 
-				INCREMENT_FLOPS(60)
+			index_base_f = index_base_d + ( f * N_ROWS_POOL*N_COLS_POOL );
 
-				index_0_f0 = index_base + (c * NUM_FILS*N_DIGS);
-				index_1_f0 = index_0_f0 + 4;
-				index_2_f0 = index_0_f0 + 8;
+			for (int r = 0; r < N_ROWS_POOL; ++r)
+			{
 
-				index_0_f1 = index_base + (c * NUM_FILS*N_DIGS) + (1 * N_DIGS);
-				index_1_f1 = index_0_f1 + 4;
-				index_2_f1 = index_0_f1 + 8;
+				index_base_r = index_base_f + (r * N_COLS_POOL);
 
-				index_0_f2 = index_base + (c * NUM_FILS*N_DIGS) + (2 * N_DIGS);
-				index_1_f2 = index_0_f2 + 4;
-				index_2_f2 = index_0_f2 + 8;
+				for (int c = 0; c+3 < N_COLS_POOL; c=c+4)
+				{
 
-				delta_ws_0_f0_p = _mm256_loadu_pd(delta_ws + index_0_f0);
-				delta_ws_1_f0_p = _mm256_loadu_pd(delta_ws + index_1_f0);
-				delta_ws_2_f0_p = _mm256_loadu_pd(delta_ws + index_2_f0);
+					INCREMENT_FLOPS(60)
 
-				delta_ws_0_f1_p = _mm256_loadu_pd(delta_ws + index_0_f1);
-				delta_ws_1_f1_p = _mm256_loadu_pd(delta_ws + index_1_f1);
-				delta_ws_2_f1_p = _mm256_loadu_pd(delta_ws + index_2_f1);
+					index_0_f0 = index_base_r + c;
 
-				delta_ws_0_f2_p = _mm256_loadu_pd(delta_ws + index_0_f2);
-				delta_ws_1_f2_p = _mm256_loadu_pd(delta_ws + index_1_f2);
-				delta_ws_2_f2_p = _mm256_loadu_pd(delta_ws + index_2_f2);
+					delta_ws_0_f0_p = _mm256_loadu_pd(delta_ws + index_0_f0);
 
-				// ---------------------------------------Filter 0-------------------------------------------
+					// ---------------------------------------Filter 0-------------------------------------------
 
-				w_0_f0_p = _mm256_set_pd((fully_con_w->data)[ind_fully_con_w(3, 0, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(2, 0, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(1, 0, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(0, 0, r, c)]
-										); 
+					w_0_f0_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r, c) );
 
-				w_1_f0_p = _mm256_set_pd((fully_con_w->data)[ind_fully_con_w(7, 0, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(6, 0, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(5, 0, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(4, 0, r, c)]
-										); 
 
-				w_2_f0_p = _mm256_set_pd(0,
-										 0,
-										 (fully_con_w->data)[ind_fully_con_w(9, 0, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(8, 0, r, c)]
-										); 
+					w_0_f0_p = _mm256_sub_pd( w_0_f0_p, _mm256_mul_pd( multiplier_p, delta_ws_0_f0_p ) );
 
-				w_0_f0_p = _mm256_sub_pd( w_0_f0_p, _mm256_mul_pd( multiplier_p, delta_ws_0_f0_p ) );
-				w_1_f0_p = _mm256_sub_pd( w_1_f0_p, _mm256_mul_pd( multiplier_p, delta_ws_1_f0_p ) );
-				w_2_f0_p = _mm256_sub_pd( w_2_f0_p, _mm256_mul_pd( multiplier_p, delta_ws_2_f0_p ) );
-
-				(fully_con_w->data)[ind_fully_con_w(0, 0, r, c)] = w_0_f0_p[0];
-				(fully_con_w->data)[ind_fully_con_w(1, 0, r, c)] = w_0_f0_p[1];
-				(fully_con_w->data)[ind_fully_con_w(2, 0, r, c)] = w_0_f0_p[2];
-				(fully_con_w->data)[ind_fully_con_w(3, 0, r, c)] = w_0_f0_p[3];
-				(fully_con_w->data)[ind_fully_con_w(4, 0, r, c)] = w_1_f0_p[0];
-				(fully_con_w->data)[ind_fully_con_w(5, 0, r, c)] = w_1_f0_p[1];
-				(fully_con_w->data)[ind_fully_con_w(6, 0, r, c)] = w_1_f0_p[2];
-				(fully_con_w->data)[ind_fully_con_w(7, 0, r, c)] = w_1_f0_p[3];
-				(fully_con_w->data)[ind_fully_con_w(8, 0, r, c)] = w_2_f0_p[0];
-				(fully_con_w->data)[ind_fully_con_w(9, 0, r, c)] = w_2_f0_p[1];
-
-				// ---------------------------------------Filter 1-------------------------------------------
-				w_0_f1_p = _mm256_set_pd((fully_con_w->data)[ind_fully_con_w(3, 1, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(2, 1, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(1, 1, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(0, 1, r, c)]
-										); 
-
-				w_1_f1_p = _mm256_set_pd((fully_con_w->data)[ind_fully_con_w(7, 1, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(6, 1, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(5, 1, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(4, 1, r, c)]
-										); 
-
-				w_2_f1_p = _mm256_set_pd(0,
-										 0,
-										 (fully_con_w->data)[ind_fully_con_w(9, 1, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(8, 1, r, c)]
-										); 
-
-				w_0_f1_p = _mm256_sub_pd( w_0_f1_p, _mm256_mul_pd( multiplier_p, delta_ws_0_f1_p ) );
-				w_1_f1_p = _mm256_sub_pd( w_1_f1_p, _mm256_mul_pd( multiplier_p, delta_ws_1_f1_p ) );
-				w_2_f1_p = _mm256_sub_pd( w_2_f1_p, _mm256_mul_pd( multiplier_p, delta_ws_2_f1_p ) );
-
-				(fully_con_w->data)[ind_fully_con_w(0, 1, r, c)] = w_0_f1_p[0];
-				(fully_con_w->data)[ind_fully_con_w(1, 1, r, c)] = w_0_f1_p[1];
-				(fully_con_w->data)[ind_fully_con_w(2, 1, r, c)] = w_0_f1_p[2];
-				(fully_con_w->data)[ind_fully_con_w(3, 1, r, c)] = w_0_f1_p[3];
-				(fully_con_w->data)[ind_fully_con_w(4, 1, r, c)] = w_1_f1_p[0];
-				(fully_con_w->data)[ind_fully_con_w(5, 1, r, c)] = w_1_f1_p[1];
-				(fully_con_w->data)[ind_fully_con_w(6, 1, r, c)] = w_1_f1_p[2];
-				(fully_con_w->data)[ind_fully_con_w(7, 1, r, c)] = w_1_f1_p[3];
-				(fully_con_w->data)[ind_fully_con_w(8, 1, r, c)] = w_2_f1_p[0];
-				(fully_con_w->data)[ind_fully_con_w(9, 1, r, c)] = w_2_f1_p[1];
-
-				// ---------------------------------------Filter 2-------------------------------------------
-				w_0_f2_p = _mm256_set_pd((fully_con_w->data)[ind_fully_con_w(3, 2, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(2, 2, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(1, 2, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(0, 2, r, c)]
-										); 
-
-				w_1_f2_p = _mm256_set_pd((fully_con_w->data)[ind_fully_con_w(7, 2, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(6, 2, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(5, 2, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(4, 2, r, c)]
-										); 
-
-				w_2_f2_p = _mm256_set_pd(0,
-										 0,
-										 (fully_con_w->data)[ind_fully_con_w(9, 2, r, c)],
-										 (fully_con_w->data)[ind_fully_con_w(8, 2, r, c)]
-										); 
-
-				w_0_f2_p = _mm256_sub_pd( w_0_f2_p, _mm256_mul_pd( multiplier_p, delta_ws_0_f2_p ) );
-				w_1_f2_p = _mm256_sub_pd( w_1_f2_p, _mm256_mul_pd( multiplier_p, delta_ws_1_f2_p ) );
-				w_2_f2_p = _mm256_sub_pd( w_2_f2_p, _mm256_mul_pd( multiplier_p, delta_ws_2_f2_p ) );
-
-				(fully_con_w->data)[ind_fully_con_w(0, 2, r, c)] = w_0_f2_p[0];
-				(fully_con_w->data)[ind_fully_con_w(1, 2, r, c)] = w_0_f2_p[1];
-				(fully_con_w->data)[ind_fully_con_w(2, 2, r, c)] = w_0_f2_p[2];
-				(fully_con_w->data)[ind_fully_con_w(3, 2, r, c)] = w_0_f2_p[3];
-				(fully_con_w->data)[ind_fully_con_w(4, 2, r, c)] = w_1_f2_p[0];
-				(fully_con_w->data)[ind_fully_con_w(5, 2, r, c)] = w_1_f2_p[1];
-				(fully_con_w->data)[ind_fully_con_w(6, 2, r, c)] = w_1_f2_p[2];
-				(fully_con_w->data)[ind_fully_con_w(7, 2, r, c)] = w_1_f2_p[3];
-				(fully_con_w->data)[ind_fully_con_w(8, 2, r, c)] = w_2_f2_p[0];
-				(fully_con_w->data)[ind_fully_con_w(9, 2, r, c)] = w_2_f2_p[1];
+					_mm256_storeu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r, c), w_0_f0_p );
+				}
+			}
 		}
 	}
 
