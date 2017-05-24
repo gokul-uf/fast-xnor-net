@@ -360,7 +360,7 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 			sum_d2_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d2_p, sum_i1_d2_p ), _mm256_add_pd( sum_i2_d2_p, sum_i3_d2_p ) );
 			sum_d3_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d3_p, sum_i1_d3_p ), _mm256_add_pd( sum_i2_d3_p, sum_i3_d3_p ) );
 
-			// transpose the four vectors
+			// horizontally sum the four vectors
 			sum_1_p = _mm256_hadd_pd(sum_d0_p, sum_d2_p);
 			sum_2_p = _mm256_hadd_pd(sum_d1_p, sum_d3_p);
 
