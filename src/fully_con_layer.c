@@ -38,8 +38,8 @@ void initialize_weights_biases(tensor* fully_con_w, tensor* fully_con_b){
 	}
 }
 
-//// loops on pool rows and cols unrolled, loop on number of filters also unrolled
-void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, tensor* fully_con_b, int batch_size)
+// loops on pool rows and cols unrolled, loop on number of filters also unrolled
+/*void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, tensor* fully_con_b, int batch_size)
 {
 
 	double  sum_r0c0,  sum_r0c1,  sum_r1c0,  sum_r1c1;
@@ -184,6 +184,233 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 			sum += (fully_con_b->data)[d];
 
 			(fully_con_out->data)[ind_fully_con_out(b, d)] = sum;
+		}
+	}
+}*/
+
+// Vectorized
+void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, tensor* fully_con_b, int batch_size)
+{
+	double sum;
+
+	int i, j, d;
+
+	__m256d sum_p;
+
+	__m256d sum_d0_p;
+	__m256d sum_d1_p;
+	__m256d sum_d2_p;
+	__m256d sum_d3_p;
+
+	__m256d sum_i0_p;
+	__m256d sum_i1_p;
+	__m256d sum_i2_p;
+	__m256d sum_i3_p;
+
+
+	__m256d sum_i0_d0_p;
+	__m256d sum_i1_d0_p;
+	__m256d sum_i2_d0_p;
+	__m256d sum_i3_d0_p;
+
+	__m256d sum_i0_d1_p;
+	__m256d sum_i1_d1_p;
+	__m256d sum_i2_d1_p;
+	__m256d sum_i3_d1_p;
+
+	__m256d sum_i0_d2_p;
+	__m256d sum_i1_d2_p;
+	__m256d sum_i2_d2_p;
+	__m256d sum_i3_d2_p;
+
+	__m256d sum_i0_d3_p;
+	__m256d sum_i1_d3_p;
+	__m256d sum_i2_d3_p;
+	__m256d sum_i3_d3_p;
+
+
+	__m256d pool_i0_p;
+	__m256d pool_i1_p;
+	__m256d pool_i2_p;
+	__m256d pool_i3_p;
+
+
+	__m256d fully_con_w_i0_p;
+	__m256d fully_con_w_i1_p;
+	__m256d fully_con_w_i2_p;
+	__m256d fully_con_w_i3_p;
+
+
+	__m256d fully_con_w_i0_d0_p;
+	__m256d fully_con_w_i1_d0_p;
+	__m256d fully_con_w_i2_d0_p;
+	__m256d fully_con_w_i3_d0_p;
+
+	__m256d fully_con_w_i0_d1_p;
+	__m256d fully_con_w_i1_d1_p;
+	__m256d fully_con_w_i2_d1_p;
+	__m256d fully_con_w_i3_d1_p;
+
+	__m256d fully_con_w_i0_d2_p;
+	__m256d fully_con_w_i1_d2_p;
+	__m256d fully_con_w_i2_d2_p;
+	__m256d fully_con_w_i3_d2_p;
+
+	__m256d fully_con_w_i0_d3_p;
+	__m256d fully_con_w_i1_d3_p;
+	__m256d fully_con_w_i2_d3_p;
+	__m256d fully_con_w_i3_d3_p;
+
+	__m256d sum_1_p;
+	__m256d sum_2_p;
+	__m256d perm_sum_1_p;
+	__m256d perm_sum_2_p;
+	__m256d bias_p;
+
+	for (int b = 0; b < batch_size; ++b)
+	{
+		for (d = 0; d+3 < N_DIGS; d=d+4)
+		{
+			bias_p = _mm256_loadu_pd((fully_con_b->data) + d);
+
+			sum_i0_d0_p = _mm256_set1_pd(0);
+			sum_i1_d0_p = _mm256_set1_pd(0);
+			sum_i2_d0_p = _mm256_set1_pd(0);
+			sum_i3_d0_p = _mm256_set1_pd(0);
+
+			sum_i0_d1_p = _mm256_set1_pd(0);
+			sum_i1_d1_p = _mm256_set1_pd(0);
+			sum_i2_d1_p = _mm256_set1_pd(0);
+			sum_i3_d1_p = _mm256_set1_pd(0);
+
+
+			sum_i0_d2_p = _mm256_set1_pd(0);
+			sum_i1_d2_p = _mm256_set1_pd(0);
+			sum_i2_d2_p = _mm256_set1_pd(0);
+			sum_i3_d2_p = _mm256_set1_pd(0);
+
+			sum_i0_d3_p = _mm256_set1_pd(0);
+			sum_i1_d3_p = _mm256_set1_pd(0);
+			sum_i2_d3_p = _mm256_set1_pd(0);
+			sum_i3_d3_p = _mm256_set1_pd(0);
+
+
+			for (int f = 0; f < NUM_FILS; ++f)
+			{
+				for (i = 0; i+3 < N_ROWS_POOL; i=i+4)
+				{
+					for (j = 0; j+3 < N_COLS_POOL; j=j+4)
+					{
+						INCREMENT_FLOPS(2)
+
+						pool_i0_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i  , j ) );
+						pool_i1_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i+1, j ) );
+						pool_i2_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i+2, j ) );
+						pool_i3_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i+3, j ) );
+
+
+
+						fully_con_w_i0_d0_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d  , f, i  , j ) );
+						fully_con_w_i1_d0_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d  , f, i+1, j ) );
+						fully_con_w_i2_d0_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d  , f, i+2, j ) );
+						fully_con_w_i3_d0_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d  , f, i+3, j ) );
+
+						fully_con_w_i0_d1_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+1, f, i  , j ) );
+						fully_con_w_i1_d1_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+1, f, i+1, j ) );
+						fully_con_w_i2_d1_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+1, f, i+2, j ) );
+						fully_con_w_i3_d1_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+1, f, i+3, j ) );
+
+						fully_con_w_i0_d2_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+2, f, i  , j ) );
+						fully_con_w_i1_d2_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+2, f, i+1, j ) );
+						fully_con_w_i2_d2_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+2, f, i+2, j ) );
+						fully_con_w_i3_d2_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+2, f, i+3, j ) );
+
+						fully_con_w_i0_d3_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+3, f, i  , j ) );
+						fully_con_w_i1_d3_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+3, f, i+1, j ) );
+						fully_con_w_i2_d3_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+3, f, i+2, j ) );
+						fully_con_w_i3_d3_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d+3, f, i+3, j ) );
+
+
+
+						sum_i0_d0_p = _mm256_add_pd( sum_i0_d0_p, _mm256_mul_pd( pool_i0_p, fully_con_w_i0_d0_p ) );
+						sum_i1_d0_p = _mm256_add_pd( sum_i1_d0_p, _mm256_mul_pd( pool_i1_p, fully_con_w_i1_d0_p ) );
+						sum_i2_d0_p = _mm256_add_pd( sum_i2_d0_p, _mm256_mul_pd( pool_i2_p, fully_con_w_i2_d0_p ) );
+						sum_i3_d0_p = _mm256_add_pd( sum_i3_d0_p, _mm256_mul_pd( pool_i3_p, fully_con_w_i3_d0_p ) );
+
+						sum_i0_d1_p = _mm256_add_pd( sum_i0_d1_p, _mm256_mul_pd( pool_i0_p, fully_con_w_i0_d1_p ) );
+						sum_i1_d1_p = _mm256_add_pd( sum_i1_d1_p, _mm256_mul_pd( pool_i1_p, fully_con_w_i1_d1_p ) );
+						sum_i2_d1_p = _mm256_add_pd( sum_i2_d1_p, _mm256_mul_pd( pool_i2_p, fully_con_w_i2_d1_p ) );
+						sum_i3_d1_p = _mm256_add_pd( sum_i3_d1_p, _mm256_mul_pd( pool_i3_p, fully_con_w_i3_d1_p ) );
+
+						sum_i0_d2_p = _mm256_add_pd( sum_i0_d2_p, _mm256_mul_pd( pool_i0_p, fully_con_w_i0_d2_p ) );
+						sum_i1_d2_p = _mm256_add_pd( sum_i1_d2_p, _mm256_mul_pd( pool_i1_p, fully_con_w_i1_d2_p ) );
+						sum_i2_d2_p = _mm256_add_pd( sum_i2_d2_p, _mm256_mul_pd( pool_i2_p, fully_con_w_i2_d2_p ) );
+						sum_i3_d2_p = _mm256_add_pd( sum_i3_d2_p, _mm256_mul_pd( pool_i3_p, fully_con_w_i3_d2_p ) );
+
+						sum_i0_d3_p = _mm256_add_pd( sum_i0_d3_p, _mm256_mul_pd( pool_i0_p, fully_con_w_i0_d3_p ) );
+						sum_i1_d3_p = _mm256_add_pd( sum_i1_d3_p, _mm256_mul_pd( pool_i1_p, fully_con_w_i1_d3_p ) );
+						sum_i2_d3_p = _mm256_add_pd( sum_i2_d3_p, _mm256_mul_pd( pool_i2_p, fully_con_w_i2_d3_p ) );
+						sum_i3_d3_p = _mm256_add_pd( sum_i3_d3_p, _mm256_mul_pd( pool_i3_p, fully_con_w_i3_d3_p ) );
+					}
+				}
+			}
+
+			sum_d0_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d0_p, sum_i1_d0_p ), _mm256_add_pd( sum_i2_d0_p, sum_i3_d0_p ) );
+			sum_d1_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d1_p, sum_i1_d1_p ), _mm256_add_pd( sum_i2_d1_p, sum_i3_d1_p ) );
+			sum_d2_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d2_p, sum_i1_d2_p ), _mm256_add_pd( sum_i2_d2_p, sum_i3_d2_p ) );
+			sum_d3_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d3_p, sum_i1_d3_p ), _mm256_add_pd( sum_i2_d3_p, sum_i3_d3_p ) );
+
+			// transpose the four vectors
+			sum_1_p = _mm256_hadd_pd(sum_d0_p, sum_d2_p);
+			sum_2_p = _mm256_hadd_pd(sum_d1_p, sum_d3_p);
+
+			perm_sum_1_p = _mm256_permute4x64_pd(sum_1_p, _MM_SHUFFLE(3,1,2,0));
+			perm_sum_2_p = _mm256_permute4x64_pd(sum_2_p, _MM_SHUFFLE(3,1,2,0));
+
+
+			sum_p = _mm256_hadd_pd( perm_sum_1_p, perm_sum_2_p );
+			sum_p = _mm256_add_pd ( sum_p, bias_p);
+
+			_mm256_storeu_pd( (fully_con_out->data) + ind_fully_con_out(b, d  ), sum_p );
+		}
+
+		for (; d < N_DIGS; ++d)
+		{
+			sum_i0_p = _mm256_set1_pd(0);
+			sum_i1_p = _mm256_set1_pd(0);
+			sum_i2_p = _mm256_set1_pd(0);
+			sum_i3_p = _mm256_set1_pd(0);
+
+
+			for (int f = 0; f < NUM_FILS; ++f)
+			{
+				for (i = 0; i+3 < N_ROWS_POOL; i=i+4)
+				{
+					for (j = 0; j+3 < N_COLS_POOL; j=j+4)
+					{
+						INCREMENT_FLOPS(2)
+
+						pool_i0_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i  , j ) );
+						pool_i1_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i+1, j ) );
+						pool_i2_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i+2, j ) );
+						pool_i3_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i+3, j ) );
+
+						fully_con_w_i0_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d, f, i  , j ) );
+						fully_con_w_i1_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d, f, i+1, j ) );
+						fully_con_w_i2_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d, f, i+2, j ) );
+						fully_con_w_i3_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w( d, f, i+3, j ) );
+
+						sum_i0_p = _mm256_add_pd( sum_i0_p, _mm256_mul_pd( pool_i0_p, fully_con_w_i0_p ) );
+						sum_i1_p = _mm256_add_pd( sum_i1_p, _mm256_mul_pd( pool_i1_p, fully_con_w_i1_p ) );
+						sum_i2_p = _mm256_add_pd( sum_i2_p, _mm256_mul_pd( pool_i2_p, fully_con_w_i2_p ) );
+						sum_i3_p = _mm256_add_pd( sum_i3_p, _mm256_mul_pd( pool_i3_p, fully_con_w_i3_p ) );
+					}
+				}
+			}
+
+			sum_p = _mm256_add_pd( _mm256_add_pd( sum_i0_p, sum_i1_p ), _mm256_add_pd( sum_i2_p, sum_i3_p ) );
+
+			(fully_con_out->data)[ind_fully_con_out(b, d)] = sum_p[0] + sum_p[1] + sum_p[2] + sum_p[3] + (fully_con_b->data)[d];
 		}
 	}
 }
