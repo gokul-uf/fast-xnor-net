@@ -2808,7 +2808,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 }*/
 
 // No unrolling
-void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
+/*void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 {
 	double delta_b;
 	double conv_val;
@@ -2822,7 +2822,7 @@ void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 		{
 			for (int i = 0; i < N_ROWS_CONV; ++i)
 			{
-				for (int j = 0; j < N_COLS_CONV; j=j+4)
+				for (int j = 0; j < N_COLS_CONV; ++j)
 				{
 					INCREMENT_FLOPS(2)
 
@@ -2839,5 +2839,98 @@ void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 
 		INCREMENT_FLOPS(2)
 		(fil_b->data)[f] -= MULTIPLIER*delta_b;
+	}
+}*/
+
+// Vectorized: conv cols unrolled
+void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
+{
+	double delta_b;
+	double conv_val;
+	double del_conv_val;
+
+	__m256d zeroes_p = _mm256_set1_pd(0.0);
+
+	__m256d conv_val_i0_p;
+	__m256d conv_val_i1_p;
+	__m256d conv_val_i2_p;
+	__m256d conv_val_i3_p;
+
+	__m256d del_conv_val_i0_p;
+	__m256d del_conv_val_i1_p;
+	__m256d del_conv_val_i2_p;
+	__m256d del_conv_val_i3_p;
+
+	__m256d vmask_i0;
+	__m256d vmask_i1;
+	__m256d vmask_i2;
+	__m256d vmask_i3;
+
+	__m256d and_i0_p;
+	__m256d and_i1_p;
+	__m256d and_i2_p;
+	__m256d and_i3_p;
+
+	__m256d delta_b_p;
+
+	int j;
+
+	for (int f = 0; f < NUM_FILS; ++f)
+	{
+		delta_b_p = _mm256_set1_pd(0.0);
+		delta_b = 0.0;
+
+		for (int b = 0; b < BATCH_SIZE; ++b)
+		{
+			for (int i = 0; i+3 < N_ROWS_CONV; i=i+4)
+			{
+				for (j = 0; j+3 < N_COLS_CONV; j=j+4)
+				{
+					INCREMENT_FLOPS(32)
+
+					conv_val_i0_p = _mm256_loadu_pd( (conv_t->data) + ind_conv_out(b, f, i  , j) );
+					conv_val_i1_p = _mm256_loadu_pd( (conv_t->data) + ind_conv_out(b, f, i+1, j) );
+					conv_val_i2_p = _mm256_loadu_pd( (conv_t->data) + ind_conv_out(b, f, i+2, j) );
+					conv_val_i3_p = _mm256_loadu_pd( (conv_t->data) + ind_conv_out(b, f, i+3, j) );
+
+					del_conv_val_i0_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i  , j) );
+					del_conv_val_i1_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i+1, j) );
+					del_conv_val_i2_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i+2, j) );
+					del_conv_val_i3_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i+3, j) );
+
+					vmask_i0 = _mm256_cmp_pd(conv_val_i0_p, zeroes_p, 0x0e); // 0x0e => GT
+					vmask_i1 = _mm256_cmp_pd(conv_val_i1_p, zeroes_p, 0x0e);
+					vmask_i2 = _mm256_cmp_pd(conv_val_i2_p, zeroes_p, 0x0e);
+					vmask_i3 = _mm256_cmp_pd(conv_val_i3_p, zeroes_p, 0x0e);
+
+					and_i0_p = _mm256_and_pd(del_conv_val_i0_p, vmask_i0); // 0x0e => GT
+					and_i1_p = _mm256_and_pd(del_conv_val_i1_p, vmask_i1);
+					and_i2_p = _mm256_and_pd(del_conv_val_i2_p, vmask_i2);
+					and_i3_p = _mm256_and_pd(del_conv_val_i3_p, vmask_i3);
+
+
+					delta_b_p = _mm256_add_pd(delta_b_p, del_conv_val_i0_p);
+					delta_b_p = _mm256_add_pd(delta_b_p, del_conv_val_i1_p);
+					delta_b_p = _mm256_add_pd(delta_b_p, del_conv_val_i2_p);
+					delta_b_p = _mm256_add_pd(delta_b_p, del_conv_val_i3_p);
+				}
+
+				for (; j < N_COLS_CONV; ++j)
+				{
+					INCREMENT_FLOPS(2)
+
+					conv_val = conv_t->data[ind_conv_out(b, f, i, j)];
+					del_conv_val = del_conv->data[ind_conv_out(b, f, i, j)];
+
+					if(conv_val > 0.0)
+					{
+						delta_b	+= del_conv_val;
+					}
+				}
+			}
+		}
+
+		INCREMENT_FLOPS(6)
+		(fil_b->data)[f] -= MULTIPLIER * (delta_b_p[1] + delta_b_p[1] + delta_b_p[2] + delta_b_p[3] + delta_b);
 	}
 }
