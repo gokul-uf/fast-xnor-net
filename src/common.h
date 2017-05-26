@@ -5,6 +5,7 @@
 #include "pmmintrin.h"
 #include "immintrin.h"
 #include "xmmintrin.h"
+#include <stdio.h>
 
 #define BATCH_SIZE 10
 #define NUM_VAL 10000
@@ -15,8 +16,8 @@
 #define POOL_DIM 2
 #define N_DIGS 10
 #define LEARN_RATE 0.01
-#define BINARY_NET 1
-//#define COUNT_FLOPS
+#define BINARY_NET 2
+// #define COUNT_FLOPS
 
 // conditional compilation of flop counts
 
@@ -63,6 +64,7 @@
 	( ( (b) * N_DIGS ) + (d) )
 
 // --------------------------------------------------------------------------------------------------
+
 
 #include <stdio.h>
 
