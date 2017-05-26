@@ -72,7 +72,7 @@ double MULTIPLIER;
 }*/
 
 // batches in outermost loop
-void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+/*void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
 {
 	int true_label;
 
@@ -237,7 +237,176 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 				(fully_con_w->data)[ind_fully_con_w(9, 2, r, c)] -= MULTIPLIER * delta_ws[r][c][2][9];
 		}
 	}
-}
+}*/
+
+//Vectorized: batches in outermost loop
+/*void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+{
+	int true_label;
+
+	double mat_val_f0, mat_val_f1, mat_val_f2;
+
+	// access in this order
+	double* delta_ws = calloc(N_ROWS_POOL * N_COLS_POOL * NUM_FILS * N_DIGS, sizeof(double));
+
+	int index_0_f0, index_1_f0, index_2_f0, index_base_d, index_base_f, index_base_r, index_base_c;
+	int index_0_f1, index_1_f1, index_2_f1;
+	int index_0_f2, index_1_f2, index_2_f2;
+
+	__m256d multiplier_p = _mm256_set1_pd(MULTIPLIER);
+
+	__m256d ones_p       = _mm256_set1_pd(1);
+
+	__m256d true_label_p;
+
+	__m256d softmax_out_0_p, softmax_out_1_p, softmax_out_2_p;
+
+	__m256d d_0_p, d_1_p, d_2_p;
+
+	__m256d vmask_0, vmask_1, vmask_2;
+
+	__m256d delta_0_p, delta_1_p, delta_2_p;
+
+
+	__m256d delta_ws_0_r0_p;
+	__m256d delta_ws_1_r1_p;
+	__m256d delta_ws_2_r2_p;
+	__m256d delta_ws_3_r3_p;
+
+	__m256d delta_ws_0_f0_p;
+
+	__m256d delta_ws_0_f1_p;
+	__m256d delta_ws_1_f1_p;
+	__m256d delta_ws_2_f1_p;
+
+	__m256d delta_ws_0_f2_p;
+	__m256d delta_ws_1_f2_p;
+	__m256d delta_ws_2_f2_p;
+
+	__m256d mat_val_r0_p;
+	__m256d mat_val_r1_p;
+	__m256d mat_val_r2_p;
+	__m256d mat_val_r3_p;
+
+	__m256d w_0_f0_p;
+	__m256d w_1_f0_p;
+	__m256d w_2_f0_p;
+
+	__m256d w_0_f1_p;
+	__m256d w_1_f1_p;
+	__m256d w_2_f1_p;
+
+	__m256d w_0_f2_p;
+	__m256d w_1_f2_p;
+	__m256d w_2_f2_p;
+
+	__m256d and_p;
+
+
+	for (int b = 0; b < BATCH_SIZE; ++b)
+	{
+
+		true_label   = labels[shuffle_index[base+b]];
+		true_label_p = _mm256_set1_pd(true_label);
+
+		for (int d = 0; d < N_DIGS; ++d)
+		{
+
+			index_base_d = ( d * NUM_FILS*N_ROWS_POOL*N_COLS_POOL );
+
+			vmask_0 = _mm256_cmp_pd(   true_label_p, _mm256_set1_pd(d), 0x10); // 0x10 => EQ.
+			and_p   = _mm256_and_pd(ones_p, vmask_0);
+
+			softmax_out_0_p = _mm256_set1_pd( (softmax_out->data)[ind_softmax_out(b, d)] );
+			delta_0_p       = _mm256_sub_pd(softmax_out_0_p, and_p);
+
+			for (int f = 0; f < NUM_FILS; ++f)
+			{
+
+				index_base_f = index_base_d + ( f * N_ROWS_POOL*N_COLS_POOL );
+
+				for (int r = 0; r+3 < N_ROWS_POOL; r=r+4)
+				{
+
+					int index_base_r0 = index_base_f + ( (r  ) * N_COLS_POOL);
+					int index_base_r1 = index_base_f + ( (r+1) * N_COLS_POOL);
+					int index_base_r2 = index_base_f + ( (r+2) * N_COLS_POOL);
+					int index_base_r3 = index_base_f + ( (r+3) * N_COLS_POOL);
+
+					for (int c = 0; c+3 < N_COLS_POOL; c=c+4)
+					{
+						INCREMENT_FLOPS(60)
+
+						int index_r0_c = index_base_r0 + c;
+						int index_r1_c = index_base_r1 + c;
+						int index_r2_c = index_base_r2 + c;
+						int index_r3_c = index_base_r3 + c;
+
+						delta_ws_0_r0_p = _mm256_loadu_pd( delta_ws + index_r0_c);
+						delta_ws_1_r1_p = _mm256_loadu_pd( delta_ws + index_r1_c);
+						delta_ws_2_r2_p = _mm256_loadu_pd( delta_ws + index_r2_c);
+						delta_ws_3_r3_p = _mm256_loadu_pd( delta_ws + index_r3_c);
+
+						mat_val_r0_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r  , c) );
+						mat_val_r1_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+1, c) );
+						mat_val_r2_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+2, c) );
+						mat_val_r3_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+3, c) );
+
+						delta_ws_0_r0_p = _mm256_add_pd( delta_ws_0_r0_p, _mm256_mul_pd( delta_0_p, mat_val_r0_p ) );
+						delta_ws_1_r1_p = _mm256_add_pd( delta_ws_1_r1_p, _mm256_mul_pd( delta_0_p, mat_val_r1_p ) );
+						delta_ws_2_r2_p = _mm256_add_pd( delta_ws_2_r2_p, _mm256_mul_pd( delta_0_p, mat_val_r2_p ) );
+						delta_ws_3_r3_p = _mm256_add_pd( delta_ws_3_r3_p, _mm256_mul_pd( delta_0_p, mat_val_r3_p ) );
+
+						_mm256_storeu_pd(delta_ws + index_r0_c, delta_ws_0_r0_p);
+						_mm256_storeu_pd(delta_ws + index_r1_c, delta_ws_1_r1_p);
+						_mm256_storeu_pd(delta_ws + index_r2_c, delta_ws_2_r2_p);
+						_mm256_storeu_pd(delta_ws + index_r3_c, delta_ws_3_r3_p);
+					}
+				}
+			}
+		}
+	}
+
+	// update the weights
+	for (int d = 0; d < N_DIGS; ++d)
+	{
+
+		index_base_d = ( d * NUM_FILS*N_ROWS_POOL*N_COLS_POOL );
+
+		for (int f = 0; f < NUM_FILS; ++f)
+		{
+
+			index_base_f = index_base_d + ( f * N_ROWS_POOL*N_COLS_POOL );
+
+			for (int r = 0; r < N_ROWS_POOL; ++r)
+			{
+
+				index_base_r = index_base_f + (r * N_COLS_POOL);
+
+				for (int c = 0; c+3 < N_COLS_POOL; c=c+4)
+				{
+
+					INCREMENT_FLOPS(60)
+
+					index_0_f0 = index_base_r + c;
+
+					delta_ws_0_f0_p = _mm256_loadu_pd(delta_ws + index_0_f0);
+
+					// ---------------------------------------Filter 0-------------------------------------------
+
+					w_0_f0_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r, c) );
+
+
+					w_0_f0_p = _mm256_sub_pd( w_0_f0_p, _mm256_mul_pd( multiplier_p, delta_ws_0_f0_p ) );
+
+					_mm256_storeu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r, c), w_0_f0_p );
+				}
+			}
+		}
+	}
+
+	free(delta_ws);
+}*/
 
 // No unrolling
 /*void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
@@ -271,6 +440,166 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 		}
 	}
 }*/
+
+//Vectorized: batch in innermoest loop, best
+void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* pool_t, int* labels, int base, int shuffle_index[])
+{
+	int cur_label, c, r;
+
+	__m256d delta_w_p, cur_label_p, delta_p, pool_p, w_p;
+
+	double delta, delta_w, delta_r0_w, delta_r1_w, delta_r2_w, delta_r3_w;
+
+	__m256d multiplier_p = _mm256_set1_pd(MULTIPLIER);
+
+	__m256d pool_r0_p;
+	__m256d pool_r1_p;
+	__m256d pool_r2_p;
+	__m256d pool_r3_p;
+
+	__m256d delta_w_r0_p;
+	__m256d delta_w_r1_p;
+	__m256d delta_w_r2_p;
+	__m256d delta_w_r3_p;
+
+	__m256d w_r0_p;
+	__m256d w_r1_p;
+	__m256d w_r2_p;
+	__m256d w_r3_p;
+
+	for (int d = 0; d < N_DIGS; ++d)
+	{
+		for (int f = 0; f < NUM_FILS; ++f)
+		{
+			for (r = 0; r+3 < N_ROWS_POOL; r=r+4)
+			{
+				for (c = 0; c+3 < N_COLS_POOL; c=c+4)
+				{
+
+					delta_w_r0_p = _mm256_set1_pd(0);
+					delta_w_r1_p = _mm256_set1_pd(0);
+					delta_w_r2_p = _mm256_set1_pd(0);
+					delta_w_r3_p = _mm256_set1_pd(0);
+
+					for (int b = 0; b < BATCH_SIZE; ++b)
+					{
+						INCREMENT_FLOPS(3)
+
+						cur_label   = labels[shuffle_index[base+b]];
+						cur_label_p = _mm256_set1_pd(cur_label);
+
+						delta   = softmax_out->data[ind_softmax_out(b, d)] - (cur_label == d);
+						delta_p = _mm256_set1_pd(delta);
+
+						pool_r0_p = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r  , c) );
+						pool_r1_p = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+1, c) );
+						pool_r2_p = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+2, c) );
+						pool_r3_p = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r+3, c) );
+
+						delta_w_r0_p = _mm256_add_pd( delta_w_r0_p, _mm256_mul_pd( delta_p, pool_r0_p ) );
+						delta_w_r1_p = _mm256_add_pd( delta_w_r1_p, _mm256_mul_pd( delta_p, pool_r1_p ) );
+						delta_w_r2_p = _mm256_add_pd( delta_w_r2_p, _mm256_mul_pd( delta_p, pool_r2_p ) );
+						delta_w_r3_p = _mm256_add_pd( delta_w_r3_p, _mm256_mul_pd( delta_p, pool_r3_p ) );
+					}
+
+					INCREMENT_FLOPS(2)
+
+					w_r0_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r  , c) );
+					w_r1_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r+1, c) );
+					w_r2_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r+2, c) );
+					w_r3_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r+3, c) );
+
+					w_r0_p = _mm256_sub_pd( w_r0_p, _mm256_mul_pd(multiplier_p, delta_w_r0_p));
+					w_r1_p = _mm256_sub_pd( w_r1_p, _mm256_mul_pd(multiplier_p, delta_w_r1_p));
+					w_r2_p = _mm256_sub_pd( w_r2_p, _mm256_mul_pd(multiplier_p, delta_w_r2_p));
+					w_r3_p = _mm256_sub_pd( w_r3_p, _mm256_mul_pd(multiplier_p, delta_w_r3_p));
+
+					_mm256_storeu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r  , c), w_r0_p );
+					_mm256_storeu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r+1, c), w_r1_p );
+					_mm256_storeu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r+2, c), w_r2_p );
+					_mm256_storeu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r+3, c), w_r3_p );
+				}
+
+				for (; c < N_COLS_POOL; ++c)
+				{
+
+					delta_r0_w = 0.0, delta_r1_w = 0.0, delta_r2_w, delta_r3_w;
+					
+					for (int b = 0; b < BATCH_SIZE; ++b)
+					{
+						INCREMENT_FLOPS(3)
+
+						cur_label = labels[shuffle_index[base+b]];
+
+						delta = softmax_out->data[ind_softmax_out(b, d)] - (cur_label == d);
+
+						delta_r0_w += delta * pool_t->data[ind_pool_out(b, f, r  , c)];
+						delta_r1_w += delta * pool_t->data[ind_pool_out(b, f, r+1, c)];
+						delta_r2_w += delta * pool_t->data[ind_pool_out(b, f, r+2, c)];
+						delta_r3_w += delta * pool_t->data[ind_pool_out(b, f, r+3, c)];
+					}
+
+					INCREMENT_FLOPS(2)
+
+					(fully_con_w->data)[ind_fully_con_w(d, f, r  , c)] -= MULTIPLIER * delta_r0_w;
+					(fully_con_w->data)[ind_fully_con_w(d, f, r+1, c)] -= MULTIPLIER * delta_r1_w;
+					(fully_con_w->data)[ind_fully_con_w(d, f, r+2, c)] -= MULTIPLIER * delta_r2_w;
+					(fully_con_w->data)[ind_fully_con_w(d, f, r+3, c)] -= MULTIPLIER * delta_r3_w;
+				}
+			}
+
+			for (; r < N_ROWS_POOL; ++r)
+			{
+				for (c = 0; c+3 < N_COLS_POOL; c=c+4)
+				{
+
+					delta_w_p = _mm256_set1_pd(0);
+
+					for (int b = 0; b < BATCH_SIZE; ++b)
+					{
+						INCREMENT_FLOPS(3)
+
+						cur_label   = labels[shuffle_index[base+b]];
+						cur_label_p = _mm256_set1_pd(cur_label);
+
+						delta   = softmax_out->data[ind_softmax_out(b, d)] - (cur_label == d);
+						delta_p = _mm256_set1_pd(delta);
+
+						pool_p    = _mm256_loadu_pd( (pool_t->data) + ind_pool_out(b, f, r, c) );
+						delta_w_p = _mm256_add_pd( delta_w_p, _mm256_mul_pd( delta_p, pool_p ) );
+					}
+
+					INCREMENT_FLOPS(2)
+
+					w_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r, c) );
+					w_p = _mm256_sub_pd( w_p, _mm256_mul_pd(multiplier_p, delta_w_p));
+
+					_mm256_storeu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r, c), w_p );
+				}
+
+				for (; c < N_COLS_POOL; ++c)
+				{
+
+					delta_w = 0.0, delta = 0.0;
+					
+					for (int b = 0; b < BATCH_SIZE; ++b)
+					{
+						INCREMENT_FLOPS(3)
+
+						cur_label = labels[shuffle_index[base+b]];
+
+						delta = softmax_out->data[ind_softmax_out(b, d)] - (cur_label == d);
+						delta_w += delta * pool_t->data[ind_pool_out(b, f, r, c)];
+					}
+
+					INCREMENT_FLOPS(2)
+
+					(fully_con_w->data)[ind_fully_con_w(d, f, r, c)] -= MULTIPLIER*delta_w;
+				}
+			}
+		}
+	}
+}
 
 // loop on digits unrolled
 /*void update_sotmax_biases(tensor* fully_con_b, tensor* softmax_out, int* labels, int base, int shuffle_index[])
@@ -1107,7 +1436,7 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 	}
 }*/
 
-// Vectorized: pool cols only
+// Vectorized: pool cols only; best perf
 void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, int* labels, int base, tensor* fully_con_w, 
 	int shuffle_index[], int pool_index_i[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int pool_index_j[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL])
 {
@@ -1323,8 +1652,8 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 	}
 }
 
-// Vectorized: conv cols, filter cols; number of filters; best perf
-void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+// Vectorized: conv cols, filter cols; number of filters
+/*void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
 								tensor* input_images, int base, int shuffle_index[])
 {
 	INCREMENT_FLOPS(1)
@@ -1513,10 +1842,38 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 
 	__m256d alphas_p;
 
+	__m256d delta_w1_1_p_f0;
+	__m256d delta_w1_2_p_f0;
+	__m256d perm_1_f0_p;
+	__m256d perm_2_f0_p;
+
+	__m256d delta_w1_1_p_f1;
+	__m256d delta_w1_2_p_f1;
+	__m256d perm_1_f1_p;
+	__m256d perm_2_f1_p;
+
+	__m256d delta_w1_1_p_f2;
+	__m256d delta_w1_2_p_f2;
+	__m256d perm_1_f2_p;
+	__m256d perm_2_f2_p;
+
+	__m256d delta_w3_1_p;
+	__m256d delta_w3_2_p;
+	__m256d perm_1_p;
+	__m256d perm_2_p;
+
+	__m256d prev_c1_p;
+	__m256d prev_c2_p;
+	__m256d prev_c3_p;
+
 	int f, c, j;
 
     for (f = 0; f+2 < NUM_FILS; f=f+3)
 	{
+
+		alphas_p_f0 = _mm256_set1_pd(alphas[f  ]);
+		alphas_p_f1 = _mm256_set1_pd(alphas[f+1]);
+		alphas_p_f2 = _mm256_set1_pd(alphas[f+2]);
 
 		for (int r = 0; r < FIL_ROWS; ++r)
 		{
@@ -1550,6 +1907,9 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 
 	    			for (int i = 0; i < N_ROWS_CONV; ++i)
 	    			{
+	    				prev_c1_p = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image1, i+r, c  ) );
+	    				prev_c2_p = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image1, i+r, c+1) );
+	    				prev_c3_p = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image1, i+r, c+2) );
 
 	    				for (j = 0; j+3 < N_COLS_CONV; j=j+4)
 	    				{
@@ -1562,9 +1922,9 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    					del_conv_val1_p_f1 = _mm256_loadu_pd( (del_conv->data)     + ind_conv_out(b, f+1, i, j) );
 	    					del_conv_val1_p_f2 = _mm256_loadu_pd( (del_conv->data)     + ind_conv_out(b, f+2, i, j) );
 
-	    					input_pixel1_p_c0  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image1, i+r, j+c  ) );
-	    					input_pixel1_p_c1  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image1, i+r, j+c+1) );
-	    					input_pixel1_p_c2  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image1, i+r, j+c+2) );
+	    					input_pixel1_p_c0  = prev_c1_p;
+	    					input_pixel1_p_c1  = prev_c2_p;
+	    					input_pixel1_p_c2  = prev_c3_p;
 	    					input_pixel1_p_c3  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image1, i+r, j+c+3) );
 
 
@@ -1613,80 +1973,59 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    					delta_w1_p_c1_f2 = _mm256_add_pd(delta_w1_p_c1_f2, mul1_p_c1_f2);
 	    					delta_w1_p_c2_f2 = _mm256_add_pd(delta_w1_p_c2_f2, mul1_p_c2_f2);
 	    					delta_w1_p_c3_f2 = _mm256_add_pd(delta_w1_p_c3_f2, mul1_p_c3_f2);
-	    				}
-
-	    				// for leftover elements at the end of the current row
-	    				for (; j < N_COLS_CONV; ++j)
-	    				{
-	    					INCREMENT_FLOPS(27)
-
-	    					conv_val1_rem_f0 = (conv_t->data)[ind_conv_out(b, f  , i, j)];
-	    					conv_val1_rem_f1 = (conv_t->data)[ind_conv_out(b, f+1, i, j)];
-	    					conv_val1_rem_f2 = (conv_t->data)[ind_conv_out(b, f+2, i, j)];
-
-	    					del_conv_val1_p_rem_f0  = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f  , i, j) );
-	    					del_conv_val1_p_rem_f1  = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f+1, i, j) );
-	    					del_conv_val1_p_rem_f2  = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f+2, i, j) );
-
-	    					input_pixel1_p_rem   = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image1, i+r, j+c  ) );
 
 
-	    					// -------------------------------------------derivative of ReLU-------------------------------------------
-	    					if( conv_val1_rem_f0 > 0.0 )
-	    					{
-	    						delta_w1_p_rem_f0 += _mm256_mul_pd(del_conv_val1_p_rem_f0, input_pixel1_p_rem);
-	    					}
-
-	    					if( conv_val1_rem_f1 > 0.0 )
-	    					{
-	    						delta_w1_p_rem_f1 += _mm256_mul_pd(del_conv_val1_p_rem_f1, input_pixel1_p_rem);
-	    					}
-
-	    					if( conv_val1_rem_f2 > 0.0 )
-	    					{
-	    						delta_w1_p_rem_f2 += _mm256_mul_pd(del_conv_val1_p_rem_f2, input_pixel1_p_rem);
-	    					}
+	    					// store already loaded pixels
+	    					prev_c1_p = input_pixel1_p_c1;
+	    					prev_c2_p = input_pixel1_p_c2;
+	    					prev_c3_p = input_pixel1_p_c3;
 	    				}
 	    			}
 			    }
 
 			    INCREMENT_FLOPS(132)
 
-			    delta_w1_c0_f0 = ( delta_w1_p_c0_f0[0] + delta_w1_p_c0_f0[1] + delta_w1_p_c0_f0[2] + delta_w1_p_c0_f0[3] + delta_w1_p_rem_f0[0] );
-			    delta_w1_c1_f0 = ( delta_w1_p_c1_f0[0] + delta_w1_p_c1_f0[1] + delta_w1_p_c1_f0[2] + delta_w1_p_c1_f0[3] + delta_w1_p_rem_f0[1] );
-			    delta_w1_c2_f0 = ( delta_w1_p_c2_f0[0] + delta_w1_p_c2_f0[1] + delta_w1_p_c2_f0[2] + delta_w1_p_c2_f0[3] + delta_w1_p_rem_f0[2] );
-			    delta_w1_c3_f0 = ( delta_w1_p_c3_f0[0] + delta_w1_p_c3_f0[1] + delta_w1_p_c3_f0[2] + delta_w1_p_c3_f0[3] + delta_w1_p_rem_f0[3] );
+			    // horizontally sum the four vectors
+				delta_w1_1_p_f0 = _mm256_hadd_pd(delta_w1_p_c0_f0, delta_w1_p_c2_f0);
+				delta_w1_2_p_f0 = _mm256_hadd_pd(delta_w1_p_c1_f0, delta_w1_p_c3_f0);
 
-			    delta_ws1_p_f0 = _mm256_set_pd(delta_w1_c3_f0, delta_w1_c2_f0, delta_w1_c1_f0, delta_w1_c0_f0);
+				perm_1_f0_p = _mm256_permute4x64_pd(delta_w1_1_p_f0, _MM_SHUFFLE(3,1,2,0));
+				perm_2_f0_p = _mm256_permute4x64_pd(delta_w1_2_p_f0, _MM_SHUFFLE(3,1,2,0));
 
-
-			    delta_w1_c0_f1 = ( delta_w1_p_c0_f1[0] + delta_w1_p_c0_f1[1] + delta_w1_p_c0_f1[2] + delta_w1_p_c0_f1[3] + delta_w1_p_rem_f1[0] );
-				delta_w1_c1_f1 = ( delta_w1_p_c1_f1[0] + delta_w1_p_c1_f1[1] + delta_w1_p_c1_f1[2] + delta_w1_p_c1_f1[3] + delta_w1_p_rem_f1[1] );
-				delta_w1_c2_f1 = ( delta_w1_p_c2_f1[0] + delta_w1_p_c2_f1[1] + delta_w1_p_c2_f1[2] + delta_w1_p_c2_f1[3] + delta_w1_p_rem_f1[2] );
-				delta_w1_c3_f1 = ( delta_w1_p_c3_f1[0] + delta_w1_p_c3_f1[1] + delta_w1_p_c3_f1[2] + delta_w1_p_c3_f1[3] + delta_w1_p_rem_f1[3] );
-
-				delta_ws1_p_f1 = _mm256_set_pd(delta_w1_c3_f1, delta_w1_c2_f1, delta_w1_c1_f1, delta_w1_c0_f1);
+				delta_ws1_p_f0 = _mm256_hadd_pd( perm_1_f0_p, perm_2_f0_p );
 
 
-				delta_w1_c0_f2 = ( delta_w1_p_c0_f2[0] + delta_w1_p_c0_f2[1] + delta_w1_p_c0_f2[2] + delta_w1_p_c0_f2[3] + delta_w1_p_rem_f2[0] );
-				delta_w1_c1_f2 = ( delta_w1_p_c1_f2[0] + delta_w1_p_c1_f2[1] + delta_w1_p_c1_f2[2] + delta_w1_p_c1_f2[3] + delta_w1_p_rem_f2[1] );
-				delta_w1_c2_f2 = ( delta_w1_p_c2_f2[0] + delta_w1_p_c2_f2[1] + delta_w1_p_c2_f2[2] + delta_w1_p_c2_f2[3] + delta_w1_p_rem_f2[2] );
-				delta_w1_c3_f2 = ( delta_w1_p_c3_f2[0] + delta_w1_p_c3_f2[1] + delta_w1_p_c3_f2[2] + delta_w1_p_c3_f2[3] + delta_w1_p_rem_f2[3] );
 
-				delta_ws1_p_f2 = _mm256_set_pd(delta_w1_c3_f2, delta_w1_c2_f2, delta_w1_c1_f2, delta_w1_c0_f2);
+				delta_w1_1_p_f1 = _mm256_hadd_pd(delta_w1_p_c0_f1, delta_w1_p_c2_f1);
+				delta_w1_2_p_f1 = _mm256_hadd_pd(delta_w1_p_c1_f1, delta_w1_p_c3_f1);
+
+				perm_1_f1_p = _mm256_permute4x64_pd(delta_w1_1_p_f1, _MM_SHUFFLE(3,1,2,0));
+				perm_2_f1_p = _mm256_permute4x64_pd(delta_w1_2_p_f1, _MM_SHUFFLE(3,1,2,0));
+
+				delta_ws1_p_f1 = _mm256_hadd_pd( perm_1_f1_p, perm_2_f1_p );
+
+
+
+				delta_w1_1_p_f2 = _mm256_hadd_pd(delta_w1_p_c0_f2, delta_w1_p_c2_f2);
+				delta_w1_2_p_f2 = _mm256_hadd_pd(delta_w1_p_c1_f2, delta_w1_p_c3_f2);
+
+				perm_1_f2_p = _mm256_permute4x64_pd(delta_w1_1_p_f2, _MM_SHUFFLE(3,1,2,0));
+				perm_2_f2_p = _mm256_permute4x64_pd(delta_w1_2_p_f2, _MM_SHUFFLE(3,1,2,0));
+
+				delta_ws1_p_f2 = _mm256_hadd_pd( perm_1_f2_p, perm_2_f2_p );
+
 
 			    // -----------------------------------------------filter weight update--------------------------------------------
 
 			    // modifying delta_w to account for sign function applied on weights
 
 			    // -----------------------------------------------filter 0-------------------------------------------------------
-			    weights1_p_f0 = _mm256_loadu_pd( (fil_w->data) + ind_fil_w(f  , r, c) );
+			    weights1_p_f0   = _mm256_loadu_pd( (fil_w->data) + ind_fil_w(f, r, c) );
 
 			    vmask_ones1_f0  = _mm256_cmp_pd(weights1_p_f0, ones_p , 0x02); //LE
 			    vmask_mones1_f0 = _mm256_cmp_pd(weights1_p_f0, mones_p, 0x0d); //GE
 			    vmask_final1_f0 = _mm256_and_pd(vmask_ones1_f0, vmask_mones1_f0); // if >= -1.00 && <= 1.00
 
-			    alphas_p_f0    = _mm256_set1_pd(alphas[f  ]);
 
 			    if_result1_p_f0 = _mm256_add_pd( _mm256_mul_pd(alphas_p_f0, weights1_p_f0), recip_n_p);
 
@@ -1705,7 +2044,6 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 			    vmask_mones1_f1 = _mm256_cmp_pd(weights1_p_f1, mones_p, 0x0d); //GE
 			    vmask_final1_f1 = _mm256_and_pd(vmask_ones1_f1, vmask_mones1_f1); // if >= -1.00 && <= 1.00
 
-			    alphas_p_f1     = _mm256_set1_pd(alphas[f+1]);
 
 			    if_result1_p_f1 = _mm256_add_pd( _mm256_mul_pd(alphas_p_f1, weights1_p_f1), recip_n_p);
 
@@ -1724,7 +2062,6 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 			    vmask_mones1_f2 = _mm256_cmp_pd(weights1_p_f2, mones_p, 0x0d); //GE
 			    vmask_final1_f2 = _mm256_and_pd(vmask_ones1_f2, vmask_mones1_f2); // if >= -1.00 && <= 1.00
 
-			    alphas_p_f2    = _mm256_set1_pd(alphas[f+2]);
 
 			    if_result1_p_f2 = _mm256_add_pd( _mm256_mul_pd(alphas_p_f2, weights1_p_f2), recip_n_p);
 
@@ -1791,46 +2128,14 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    					    mul2_p_f2 = _mm256_mul_pd(         and2_p_f2, input_pixel2_p);
 	    					delta_w2_p_f2 = _mm256_add_pd(     delta_w2_p_f2,         mul2_p_f2);
 	    				}
-
-	    				// for leftover elements at the end of the current row
-	    				for (; j < N_COLS_CONV; ++j)
-	    				{
-	    					INCREMENT_FLOPS(9)
-
-	    					conv_val2_rem_f0 = (conv_t->data)[ind_conv_out(b, f  , i, j)];
-	    					conv_val2_rem_f1 = (conv_t->data)[ind_conv_out(b, f+1, i, j)];
-	    					conv_val2_rem_f2 = (conv_t->data)[ind_conv_out(b, f+2, i, j)];
-
-	    					del_conv_val2_rem_f0 = (del_conv->data)[ind_conv_out(b, f  , i, j)];
-	    					del_conv_val2_rem_f1 = (del_conv->data)[ind_conv_out(b, f+1, i, j)];
-	    					del_conv_val2_rem_f2 = (del_conv->data)[ind_conv_out(b, f+2, i, j)];
-
-	    					input_pixel2_rem  = (input_images->data)[ind_input_img(cur_image2, i+r, j+c)];
-
-	    					// ---------------------------------------derivative of ReLU------------------------------------------------
-	    					if( conv_val2_rem_f0 > 0.0 )
-	    					{
-	    						delta_w2_rem_f0 += del_conv_val2_rem_f0 * input_pixel2_rem;
-	    					}
-
-	    					if( conv_val2_rem_f1 > 0.0 )
-	    					{
-	    						delta_w2_rem_f1 += del_conv_val2_rem_f1 * input_pixel2_rem;
-	    					}
-
-	    					if( conv_val2_rem_f2 > 0.0 )
-	    					{
-	    						delta_w2_rem_f2 += del_conv_val2_rem_f2 * input_pixel2_rem;
-	    					}
-	    				}
 	    			}
 			    }
 
 			    INCREMENT_FLOPS(33)
 
-			    delta_w2_f0 = ( delta_w2_p_f0[0] + delta_w2_p_f0[1] + delta_w2_p_f0[2] + delta_w2_p_f0[3] + delta_w2_rem_f0);
-			    delta_w2_f1 = ( delta_w2_p_f1[0] + delta_w2_p_f1[1] + delta_w2_p_f1[2] + delta_w2_p_f1[3] + delta_w2_rem_f1);
-			    delta_w2_f2 = ( delta_w2_p_f2[0] + delta_w2_p_f2[1] + delta_w2_p_f2[2] + delta_w2_p_f2[3] + delta_w2_rem_f2);
+			    delta_w2_f0 = ( delta_w2_p_f0[0] + delta_w2_p_f0[1] + delta_w2_p_f0[2] + delta_w2_p_f0[3] );
+			    delta_w2_f1 = ( delta_w2_p_f1[0] + delta_w2_p_f1[1] + delta_w2_p_f1[2] + delta_w2_p_f1[3] );
+			    delta_w2_f2 = ( delta_w2_p_f2[0] + delta_w2_p_f2[1] + delta_w2_p_f2[2] + delta_w2_p_f2[3] );
 
 
 			    // modifying delta_w to account for sign function applied on weights
@@ -1879,6 +2184,8 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	for (; f < NUM_FILS; ++f)
 	{
 
+		alphas_p = _mm256_set1_pd(alphas[f]);
+
 		for (int r = 0; r < FIL_ROWS; ++r)
 		{
 
@@ -1899,6 +2206,10 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    			for (int i = 0; i < N_ROWS_CONV; ++i)
 	    			{
 
+	    				prev_c1_p = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image3, i+r, c  ) );
+	    				prev_c2_p = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image3, i+r, c+1) );
+	    				prev_c3_p = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image3, i+r, c+2) );
+
 	    				for (j = 0; j+3 < N_COLS_CONV; j=j+4)
 	    				{
 	    					INCREMENT_FLOPS(36)
@@ -1906,9 +2217,9 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    					conv_val3_p     = _mm256_loadu_pd( (conv_t->data)       + ind_conv_out(b, f, i, j) );
 	    					del_conv_val3_p = _mm256_loadu_pd( (del_conv->data)     + ind_conv_out(b, f, i, j) );
 
-	    					input_pixel3_p_c0  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image3, i+r, j+c  ) );
-	    					input_pixel3_p_c1  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image3, i+r, j+c+1) );
-	    					input_pixel3_p_c2  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image3, i+r, j+c+2) );
+	    					input_pixel3_p_c0  = prev_c1_p;
+	    					input_pixel3_p_c1  = prev_c2_p;
+	    					input_pixel3_p_c2  = prev_c3_p;
 	    					input_pixel3_p_c3  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image3, i+r, j+c+3) );
 
 
@@ -1925,35 +2236,25 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    					delta_w3_p_c1 = _mm256_add_pd(delta_w3_p_c1, mul3_p_c1);
 	    					delta_w3_p_c2 = _mm256_add_pd(delta_w3_p_c2, mul3_p_c2);
 	    					delta_w3_p_c3 = _mm256_add_pd(delta_w3_p_c3, mul3_p_c3);
-	    				}
 
-	    				// for leftover elements at the end of the current row
-	    				for (; j < N_COLS_CONV; ++j)
-	    				{
-	    					INCREMENT_FLOPS(9)
 
-	    					conv_val3_rem = (conv_t->data)[ind_conv_out(b, f, i, j)];
-
-	    					del_conv_val3_p_rem  = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
-	    					input_pixel3_p_rem   = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image3, i+r, j+c  ) );
-
-	    					// derivative of ReLU
-	    					if( conv_val3_rem > 0.0 )
-	    					{
-	    						delta_w3_p_rem += _mm256_mul_pd(del_conv_val3_p_rem, input_pixel3_p_rem);
-	    					}
+	    					// storing previously loaded pixels
+	    					prev_c1_p = input_pixel3_p_c1;
+	    					prev_c2_p = input_pixel3_p_c2;
+	    					prev_c3_p = input_pixel3_p_c3;
 	    				}
 	    			}
 			    }
 
 			    INCREMENT_FLOPS(44)
 
-			    delta_w3_c0 = ( delta_w3_p_c0[0] + delta_w3_p_c0[1] + delta_w3_p_c0[2] + delta_w3_p_c0[3] + delta_w3_p_rem[0] );
-			    delta_w3_c1 = ( delta_w3_p_c1[0] + delta_w3_p_c1[1] + delta_w3_p_c1[2] + delta_w3_p_c1[3] + delta_w3_p_rem[1] );
-			    delta_w3_c2 = ( delta_w3_p_c2[0] + delta_w3_p_c2[1] + delta_w3_p_c2[2] + delta_w3_p_c2[3] + delta_w3_p_rem[2] );
-			    delta_w3_c3 = ( delta_w3_p_c3[0] + delta_w3_p_c3[1] + delta_w3_p_c3[2] + delta_w3_p_c3[3] + delta_w3_p_rem[3] );
+			    delta_w3_1_p = _mm256_hadd_pd(delta_w3_p_c0, delta_w3_p_c2);
+				delta_w3_2_p = _mm256_hadd_pd(delta_w3_p_c1, delta_w3_p_c3);
 
-			    delta_ws3_p = _mm256_set_pd(delta_w3_c3, delta_w3_c2, delta_w3_c1, delta_w3_c0);
+				perm_1_p = _mm256_permute4x64_pd(delta_w3_1_p, _MM_SHUFFLE(3,1,2,0));
+				perm_2_p = _mm256_permute4x64_pd(delta_w3_2_p, _MM_SHUFFLE(3,1,2,0));
+
+				delta_ws3_p = _mm256_hadd_pd( perm_1_p, perm_2_p );
 
 			    // -----------------------------------------------filter weight update--------------------------------------------
 
@@ -1964,7 +2265,6 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 			    vmask_mones3 = _mm256_cmp_pd(weights3_p, mones_p, 0x0d); //GE
 			    vmask_final3 = _mm256_and_pd(vmask_ones3, vmask_mones3); // if >= -1.00 && <= 1.00
 
-			    alphas_p    = _mm256_set1_pd(alphas[f]);
 
 			    if_result3_p = _mm256_add_pd( _mm256_mul_pd(alphas_p, weights3_p), recip_n_p);
 
@@ -2008,28 +2308,12 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    					mul4_p = _mm256_mul_pd(and4_p, input_pixel4_p);
 	    					delta_w4_p = _mm256_add_pd(delta_w4_p, mul4_p);
 	    				}
-
-	    				// for leftover elements at the end of the current row
-	    				for (; j < N_COLS_CONV; ++j)
-	    				{
-	    					INCREMENT_FLOPS(9)
-
-	    					conv_val4_rem = (conv_t->data)[ind_conv_out(b, f, i, j)];
-	    					del_conv_val4_rem = (del_conv->data)[ind_conv_out(b, f, i, j)];
-	    					input_pixel4_rem  = (input_images->data)[ind_input_img(cur_image4, i+r, j+c)];
-
-	    					// derivative of ReLU
-	    					if( conv_val4_rem > 0.0 )
-	    					{
-	    						delta_w4_rem += del_conv_val4_rem * input_pixel4_rem;
-	    					}
-	    				}
 	    			}
 			    }
 
 			    INCREMENT_FLOPS(11)
 
-			    delta_w4 = ( delta_w4_p[0] + delta_w4_p[1] + delta_w4_p[2] + delta_w4_p[3] + delta_w4_rem);
+			    delta_w4 = ( delta_w4_p[0] + delta_w4_p[1] + delta_w4_p[2] + delta_w4_p[3] );
 
 
 			    // modifying delta_w to account for sign function applied on weights
@@ -2050,450 +2334,602 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 			}
 		}
 	}
-}
-
-// unroll fil rows and cols, batch in inner loop
-/*void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
-								tensor* input_images, int base, int shuffle_index[])
-{
-	INCREMENT_FLOPS(1)
-	double recip_n = 1.0/(FIL_ROWS * FIL_COLS);
-	double input_pixel0, input_pixel1, input_pixel2, input_pixel3;
-	double conv_val0, conv_val1, conv_val2;
-	double del_conv0, del_conv1, del_conv2;
-	int cur_image;
-
-	double weight_r0c0f0, weight_r0c0f1, weight_r0c0f2;
-	double weight_r0c1f0, weight_r0c1f1, weight_r0c1f2;
-	double weight_r1c0f0, weight_r1c0f1, weight_r1c0f2;
-	double weight_r1c1f0, weight_r1c1f1, weight_r1c1f2;
-
-	double delta_w_r0c0f0, delta_w_r0c0f1, delta_w_r0c0f2;
-    double delta_w_r0c1f0, delta_w_r0c1f1, delta_w_r0c1f2;
-    double delta_w_r1c0f0, delta_w_r1c0f1, delta_w_r1c0f2;
-    double delta_w_r1c1f0, delta_w_r1c1f1, delta_w_r1c1f2;
-
-    double prev_input_pixel_01, prev_input_pixel_11;
-
-
-    // declaration for the leftover part, at the end
-    double delta_w0, delta_w1, delta_w2;
-    double input_pixel;
-    double weight0, weight1, weight2;
-
-
-    int r=0, c=0;
-	//unroll outer loop on number of filters
-	for (r = 0; r+1 < FIL_ROWS; r=r+2)
-	{
-		for (c = 0; c+1 < FIL_COLS; c=c+2)
-		{
-		    delta_w_r0c0f0 = 0.0, delta_w_r0c0f1 = 0.0, delta_w_r0c0f2 = 0.0;
-		    delta_w_r0c1f0 = 0.0, delta_w_r0c1f1 = 0.0, delta_w_r0c1f2 = 0.0;
-		    delta_w_r1c0f0 = 0.0, delta_w_r1c0f1 = 0.0, delta_w_r1c0f2 = 0.0;
-		    delta_w_r1c1f0 = 0.0, delta_w_r1c1f1 = 0.0, delta_w_r1c1f2 = 0.0;
-
-		    for (int b = 0; b < BATCH_SIZE; ++b)
-		    {
-		    	cur_image = shuffle_index[b+base];
-
-    			for (int i = 0; i < N_ROWS_CONV; ++i)
-    			{
-
-    				prev_input_pixel_01 = (input_images->data)[ind_input_img(cur_image, i+r  , 0+c  )];
-    				prev_input_pixel_11 = (input_images->data)[ind_input_img(cur_image, i+r+1, 0+c  )];
-
-    				for (int j = 0; j < N_COLS_CONV; ++j)
-    				{
-
-    					INCREMENT_FLOPS(27)
-
-    					// one for each r and c, for the unrolling
-    					input_pixel0 = prev_input_pixel_01;
-    					input_pixel1 = (input_images->data)[ind_input_img(cur_image, i+r  , j+c+1)];
-    					input_pixel2 = prev_input_pixel_11;
-    					input_pixel3 = (input_images->data)[ind_input_img(cur_image, i+r+1, j+c+1)];
-
-    					// one for each filter
-    					conv_val0 = (conv_t->data)[ind_conv_out(b, 0, i, j)];
-    					conv_val1 = (conv_t->data)[ind_conv_out(b, 1, i, j)];
-    					conv_val2 = (conv_t->data)[ind_conv_out(b, 2, i, j)];
-
-    					// one for each filter
-    					del_conv0 = (del_conv->data)[ind_conv_out(b, 0, i, j)];
-    					del_conv1 = (del_conv->data)[ind_conv_out(b, 1, i, j)];
-    					del_conv2 = (del_conv->data)[ind_conv_out(b, 2, i, j)];
-    					
-    					// filter 1
-    					if( conv_val0 > 0.0 )
-    					{
-    						delta_w_r0c0f0 += del_conv0*input_pixel0;
-    						delta_w_r0c1f0 += del_conv0*input_pixel1;
-    						delta_w_r1c0f0 += del_conv0*input_pixel2;
-    						delta_w_r1c1f0 += del_conv0*input_pixel3;
-    					}
-
-    					// filter 2
-    					if( conv_val1 > 0.0 )
-    					{
-    						delta_w_r0c0f1 += del_conv1*input_pixel0;
-    						delta_w_r0c1f1 += del_conv1*input_pixel1;
-    						delta_w_r1c0f1 += del_conv1*input_pixel2;
-    						delta_w_r1c1f1 += del_conv1*input_pixel3;
-    					}
-
-    					// filter 3
-    					if( conv_val2 > 0.0 )
-    					{
-    						delta_w_r0c0f2 += del_conv2*input_pixel0;
-    						delta_w_r0c1f2 += del_conv2*input_pixel1;
-    						delta_w_r1c0f2 += del_conv2*input_pixel2;
-    						delta_w_r1c1f2 += del_conv2*input_pixel3;
-    					}
-
-    					prev_input_pixel_01 = input_pixel1;
-    					prev_input_pixel_11 = input_pixel3;
-    				}
-    			}
-		    }
-
-		    INCREMENT_FLOPS(60)
-
-		    // modifying delta_w to account for sign function applied on weights
-		    weight_r0c0f0 = (fil_w->data)[ind_fil_w(0, r  , c  )];
-		    weight_r0c0f1 = (fil_w->data)[ind_fil_w(1, r  , c  )];
-		    weight_r0c0f2 = (fil_w->data)[ind_fil_w(2, r  , c  )];
-
-		    weight_r0c1f0 = (fil_w->data)[ind_fil_w(0, r  , c+1)];
-		    weight_r0c1f1 = (fil_w->data)[ind_fil_w(1, r  , c+1)];
-		    weight_r0c1f2 = (fil_w->data)[ind_fil_w(2, r  , c+1)];
-
-		    weight_r1c0f0 = (fil_w->data)[ind_fil_w(0, r+1, c  )];
-		    weight_r1c0f1 = (fil_w->data)[ind_fil_w(1, r+1, c  )];
-		    weight_r1c0f2 = (fil_w->data)[ind_fil_w(2, r+1, c  )];
-
-		    weight_r1c1f0 = (fil_w->data)[ind_fil_w(0, r+1, c+1)];
-		    weight_r1c1f1 = (fil_w->data)[ind_fil_w(1, r+1, c+1)];
-		    weight_r1c1f2 = (fil_w->data)[ind_fil_w(2, r+1, c+1)];
-
-		    // filter 1
-		    if (weight_r0c0f0 <= 1.0 && weight_r0c0f0 >= -1.0)
-		    {
-		    	delta_w_r0c0f0 *= ( (alphas[0]*weight_r0c0f0) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r0c0f0 *= recip_n;
-	    	}
-
-	    	if (weight_r0c1f0 <= 1.0 && weight_r0c1f0 >= -1.0)
-		    {
-		    	delta_w_r0c1f0 *= ( (alphas[0]*weight_r0c1f0) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r0c1f0 *= recip_n;
-	    	}
-
-	    	if (weight_r1c0f0 <= 1.0 && weight_r1c0f0 >= -1.0)
-		    {
-		    	delta_w_r1c0f0 *= ( (alphas[0]*weight_r1c0f0) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r1c0f0 *= recip_n;
-	    	}
-
-	    	if (weight_r1c1f0 <= 1.0 && weight_r1c1f0 >= -1.0)
-		    {
-		    	delta_w_r1c1f0 *= ( (alphas[0]*weight_r1c1f0) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r1c1f0 *= recip_n;
-	    	}
-
-	    	// filter 2
-	    	if (weight_r0c0f1 <= 1.0 && weight_r0c0f1 >= -1.0)
-		    {
-		    	delta_w_r0c0f1 *= ( (alphas[1]*weight_r0c0f1) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r0c0f1 *= recip_n;
-	    	}
-
-	    	if (weight_r0c1f1 <= 1.0 && weight_r0c1f1 >= -1.0)
-		    {
-		    	delta_w_r0c1f1 *= ( (alphas[1]*weight_r0c1f1) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r0c1f1 *= recip_n;
-	    	}
-
-	    	if (weight_r1c0f1 <= 1.0 && weight_r1c0f1 >= -1.0)
-		    {
-		    	delta_w_r1c0f1 *= ( (alphas[1]*weight_r1c0f1) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r1c0f1 *= recip_n;
-	    	}
-
-	    	if (weight_r1c1f1 <= 1.0 && weight_r1c1f1 >= -1.0)
-		    {
-		    	delta_w_r1c1f1 *= ( (alphas[1]*weight_r1c1f1) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r1c1f1 *= recip_n;
-	    	}
-
-	    	// filter 3
-	    	if (weight_r0c0f2 <= 1.0 && weight_r0c0f2 >= -1.0)
-		    {
-		    	delta_w_r0c0f2 *= ( (alphas[2]*weight_r0c0f2) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r0c0f2 *= recip_n;
-	    	}
-
-	    	if (weight_r0c1f2 <= 1.0 && weight_r0c1f2 >= -1.0)
-		    {
-		    	delta_w_r0c1f2 *= ( (alphas[2]*weight_r0c1f2) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r0c1f2 *= recip_n;
-	    	}
-
-	    	if (weight_r1c0f2 <= 1.0 && weight_r1c0f2 >= -1.0)
-		    {
-		    	delta_w_r1c0f2 *= ( (alphas[2]*weight_r1c0f2) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r1c0f2 *= recip_n;
-	    	}
-
-	    	if (weight_r1c1f2 <= 1.0 && weight_r1c1f2 >= -1.0)
-		    {
-		    	delta_w_r1c1f2 *= ( (alphas[2]*weight_r1c1f2) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w_r1c1f2 *= recip_n;
-	    	}
-		    
-	    	INCREMENT_FLOPS(24)
-
-		    (fil_w->data)[ind_fil_w(0, r  , c  )] = weight_r0c0f0 - MULTIPLIER*delta_w_r0c0f0;
-		    (fil_w->data)[ind_fil_w(1, r  , c  )] = weight_r0c0f1 - MULTIPLIER*delta_w_r0c0f1;
-		    (fil_w->data)[ind_fil_w(2, r  , c  )] = weight_r0c0f2 - MULTIPLIER*delta_w_r0c0f2;
-
-		    (fil_w->data)[ind_fil_w(0, r  , c+1)] = weight_r0c1f0 - MULTIPLIER*delta_w_r0c1f0;
-		    (fil_w->data)[ind_fil_w(1, r  , c+1)] = weight_r0c1f1 - MULTIPLIER*delta_w_r0c1f1;
-		    (fil_w->data)[ind_fil_w(2, r  , c+1)] = weight_r0c1f2 - MULTIPLIER*delta_w_r0c1f2;
-
-		    (fil_w->data)[ind_fil_w(0, r+1, c  )] = weight_r1c0f0 - MULTIPLIER*delta_w_r1c0f0;
-		    (fil_w->data)[ind_fil_w(1, r+1, c  )] = weight_r1c0f1 - MULTIPLIER*delta_w_r1c0f1;
-		    (fil_w->data)[ind_fil_w(2, r+1, c  )] = weight_r1c0f2 - MULTIPLIER*delta_w_r1c0f2;
-
-		    (fil_w->data)[ind_fil_w(0, r+1, c+1)] = weight_r1c1f0 - MULTIPLIER*delta_w_r1c1f0;
-		    (fil_w->data)[ind_fil_w(1, r+1, c+1)] = weight_r1c1f1 - MULTIPLIER*delta_w_r1c1f1;
-		    (fil_w->data)[ind_fil_w(2, r+1, c+1)] = weight_r1c1f2 - MULTIPLIER*delta_w_r1c1f2;
-		}
-
-		// for the left over element in the current row, at the end
-		for (; c < FIL_COLS; ++c)
-		{
-		    delta_w0 = 0.0, delta_w1 = 0.0, delta_w2 = 0.0;
-
-		    for (int b = 0; b < BATCH_SIZE; ++b)
-		    {
-		    	cur_image = shuffle_index[b+base];
-
-    			for (int i = 0; i < N_ROWS_CONV; ++i)
-    			{
-
-    				for (int j = 0; j < N_COLS_CONV; ++j)
-    				{
-
-    					INCREMENT_FLOPS(9)
-
-    					input_pixel = (input_images->data)[ind_input_img(cur_image, i+r, j+c)];
-
-    					conv_val0 = (conv_t->data)[ind_conv_out(b, 0, i, j)];
-    					conv_val1 = (conv_t->data)[ind_conv_out(b, 1, i, j)];
-    					conv_val2 = (conv_t->data)[ind_conv_out(b, 2, i, j)];
-
-    					del_conv0 = (del_conv->data)[ind_conv_out(b, 0, i, j)];
-    					del_conv1 = (del_conv->data)[ind_conv_out(b, 1, i, j)];
-    					del_conv2 = (del_conv->data)[ind_conv_out(b, 2, i, j)];
-    					
-    					if( conv_val0 > 0.0 )
-    					{
-    						delta_w0 += del_conv0*input_pixel;
-    					}
-
-    					if( conv_val1 > 0.0 )
-    					{
-    						delta_w1 += del_conv1*input_pixel;
-    					}
-
-    					if( conv_val2 > 0.0 )
-    					{
-    						delta_w2 += del_conv2*input_pixel;
-    					}
-    				}
-    			}
-		    }
-
-		    INCREMENT_FLOPS(21)
-		    // modifying delta_w to account for sign function applied on weights
-		    weight0 = (fil_w->data)[ind_fil_w(0, r, c)];
-		    weight1 = (fil_w->data)[ind_fil_w(1, r, c)];
-		    weight2 = (fil_w->data)[ind_fil_w(2, r, c)];
-
-		    if (weight0 <= 1 && weight0 >= -1)
-		    {
-		    	delta_w0 *= ( (alphas[0]*weight0) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w0 *= recip_n;
-	    	}
-
-	    	if (weight1 <= 1 && weight1 >= -1)
-		    {
-		    	delta_w1 *= ( (alphas[1]*weight1) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w1 *= recip_n;
-	    	}
-
-	    	if (weight2 <= 1 && weight2 >= -1)
-		    {
-		    	delta_w2 *= ( (alphas[2]*weight2) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w2 *= recip_n;
-	    	}
-		    
-		    (fil_w->data)[ind_fil_w(0, r, c)] = weight0 - MULTIPLIER*delta_w0;
-		    (fil_w->data)[ind_fil_w(1, r, c)] = weight1 - MULTIPLIER*delta_w1;
-		    (fil_w->data)[ind_fil_w(2, r, c)] = weight2 - MULTIPLIER*delta_w2;
-		}
-	}
-
-
-	// for the leftover row, at the end
-	for (; r < FIL_ROWS; ++r)
-	{
-		for (c=0; c < FIL_COLS; ++c)
-		{
-		    delta_w0 = 0.0, delta_w1 = 0.0, delta_w2 = 0.0;
-
-		    for (int b = 0; b < BATCH_SIZE; ++b)
-		    {
-		    	cur_image = shuffle_index[b+base];
-
-    			for (int i = 0; i < N_ROWS_CONV; ++i)
-    			{
-
-    				for (int j = 0; j < N_COLS_CONV; ++j)
-    				{
-
-    					INCREMENT_FLOPS(9)
-
-    					input_pixel = (input_images->data)[ind_input_img(cur_image, i+r, j+c)];
-
-    					conv_val0 = (conv_t->data)[ind_conv_out(b, 0, i, j)];
-    					conv_val1 = (conv_t->data)[ind_conv_out(b, 1, i, j)];
-    					conv_val2 = (conv_t->data)[ind_conv_out(b, 2, i, j)];
-
-    					del_conv0 = (del_conv->data)[ind_conv_out(b, 0, i, j)];
-    					del_conv1 = (del_conv->data)[ind_conv_out(b, 1, i, j)];
-    					del_conv2 = (del_conv->data)[ind_conv_out(b, 2, i, j)];
-    					
-    					if( conv_val0 > 0.0 )
-    					{
-    						delta_w0 += del_conv0*input_pixel;
-    					}
-
-    					if( conv_val1 > 0.0 )
-    					{
-    						delta_w1 += del_conv1*input_pixel;
-    					}
-
-    					if( conv_val2 > 0.0 )
-    					{
-    						delta_w2 += del_conv2*input_pixel;
-    					}
-    				}
-    			}
-		    }
-
-		    INCREMENT_FLOPS(21)
-		    // modifying delta_w to account for sign function applied on weights
-		    weight0 = (fil_w->data)[ind_fil_w(0, r, c)];
-		    weight1 = (fil_w->data)[ind_fil_w(1, r, c)];
-		    weight2 = (fil_w->data)[ind_fil_w(2, r, c)];
-
-		    if (weight0 <= 1 && weight0 >= -1)
-		    {
-		    	delta_w0 *= ( (alphas[0]*weight0) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w0 *= recip_n;
-	    	}
-
-	    	if (weight1 <= 1 && weight1 >= -1)
-		    {
-		    	delta_w1 *= ( (alphas[1]*weight1) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w1 *= recip_n;
-	    	}
-
-	    	if (weight2 <= 1 && weight2 >= -1)
-		    {
-		    	delta_w2 *= ( (alphas[2]*weight2) +  recip_n );
-		    }
-		    else
-	    	{
-	    		delta_w2 *= recip_n;
-	    	}
-		    
-		    (fil_w->data)[ind_fil_w(0, r, c)] = weight0 - MULTIPLIER*delta_w0;
-		    (fil_w->data)[ind_fil_w(1, r, c)] = weight1 - MULTIPLIER*delta_w1;
-		    (fil_w->data)[ind_fil_w(2, r, c)] = weight2 - MULTIPLIER*delta_w2;
-		}
-	}
 }*/
 
-// No unrolling
+// Vectorized: fill rows and cols, conv cols unrolled; hadds used; best perf
+void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM_FILS], tensor* del_conv, tensor* conv_t, 
+								tensor* input_images, int base, int shuffle_index[])
+{
+
+	INCREMENT_FLOPS(1)
+	
+	double recip_n    = 1.0/(FIL_ROWS * FIL_COLS);
+	__m256d recip_n_p = _mm256_set1_pd( recip_n );
+
+	__m256d multiplier_p = _mm256_set1_pd(MULTIPLIER);
+
+	int cur_image;
+
+	double delta_w, alpha, weight;
+
+	__m256d zeroes_p = _mm256_set1_pd(0.0);
+	__m256d delta_w_p;
+	__m256d conv_val_p;
+	__m256d del_conv_val_p;
+	__m256d input_pixel_p;
+
+	__m256d vmask;
+	__m256d and_p;
+	__m256d ones_p  = _mm256_set1_pd(1.0);
+	__m256d mones_p = _mm256_set1_pd(-1.0);
+	__m256d vmask_ones, vmask_mones, vmask_final;
+	__m256d weight_p, alphas_p;
+
+	__m256d if_result_p;
+	__m256d delta_w_if_p;
+	__m256d delta_w_else_p;
+
+
+	__m256d delta_w_c0_p;
+	__m256d delta_w_c1_p;
+	__m256d delta_w_c2_p;
+	__m256d delta_w_c3_p;
+
+	__m256d input_pixel_c0_p;
+	__m256d input_pixel_c1_p;
+	__m256d input_pixel_c2_p;
+	__m256d input_pixel_c3_p;
+
+	__m256d delta_w_1_p;
+	__m256d delta_w_2_p;
+
+	__m256d perm_1_p;
+	__m256d perm_2_p;
+
+	__m256d delta_w_final_p;
+
+	int c, j, r;
+
+	__m256d delta_w_r0_c0_p;
+	__m256d delta_w_r0_c1_p;
+	__m256d delta_w_r0_c2_p;
+	__m256d delta_w_r0_c3_p;
+
+	__m256d delta_w_r1_c0_p;
+	__m256d delta_w_r1_c1_p;
+	__m256d delta_w_r1_c2_p;
+	__m256d delta_w_r1_c3_p;
+
+	__m256d delta_w_r2_c0_p;
+	__m256d delta_w_r2_c1_p;
+	__m256d delta_w_r2_c2_p;
+	__m256d delta_w_r2_c3_p;
+
+	__m256d delta_w_r3_c0_p;
+	__m256d delta_w_r3_c1_p;
+	__m256d delta_w_r3_c2_p;
+	__m256d delta_w_r3_c3_p;
+
+
+	__m256d input_pixel_r0_c0_p;
+	__m256d input_pixel_r0_c1_p;
+	__m256d input_pixel_r0_c2_p;
+	__m256d input_pixel_r0_c3_p;
+
+	__m256d input_pixel_r1_c0_p;
+	__m256d input_pixel_r1_c1_p;
+	__m256d input_pixel_r1_c2_p;
+	__m256d input_pixel_r1_c3_p;
+
+	__m256d input_pixel_r2_c0_p;
+	__m256d input_pixel_r2_c1_p;
+	__m256d input_pixel_r2_c2_p;
+	__m256d input_pixel_r2_c3_p;
+
+	__m256d input_pixel_r3_c0_p;
+	__m256d input_pixel_r3_c1_p;
+	__m256d input_pixel_r3_c2_p;
+	__m256d input_pixel_r3_c3_p;
+
+
+	__m256d delta_w_1_r0_p;
+	__m256d delta_w_2_r0_p;
+
+	__m256d delta_w_1_r1_p;
+	__m256d delta_w_2_r1_p;
+
+	__m256d delta_w_1_r2_p;
+	__m256d delta_w_2_r2_p;
+
+	__m256d delta_w_1_r3_p;
+	__m256d delta_w_2_r3_p;
+
+
+	__m256d perm_1_r0_p;
+	__m256d perm_2_r0_p;
+
+	__m256d perm_1_r1_p;
+	__m256d perm_2_r1_p;
+
+	__m256d perm_1_r2_p;
+	__m256d perm_2_r2_p;
+
+	__m256d perm_1_r3_p;
+	__m256d perm_2_r3_p;
+
+	__m256d delta_w_final_r0_p;
+	__m256d delta_w_final_r1_p;
+	__m256d delta_w_final_r2_p;
+	__m256d delta_w_final_r3_p;
+
+
+	__m256d weight_r0_p;
+	__m256d weight_r1_p;
+	__m256d weight_r2_p;
+	__m256d weight_r3_p;
+
+	__m256d vmask_ones_r0;
+	__m256d vmask_ones_r1;
+	__m256d vmask_ones_r2;
+	__m256d vmask_ones_r3;
+
+	__m256d vmask_mones_r0;
+	__m256d vmask_mones_r1;
+	__m256d vmask_mones_r2;
+	__m256d vmask_mones_r3;
+
+	__m256d vmask_final_r0;
+	__m256d vmask_final_r1;
+	__m256d vmask_final_r2;
+	__m256d vmask_final_r3;
+
+	__m256d if_result_r0_p;
+	__m256d if_result_r1_p;
+	__m256d if_result_r2_p;
+	__m256d if_result_r3_p;
+
+	__m256d delta_w_if_r0_p;
+	__m256d delta_w_if_r1_p;
+	__m256d delta_w_if_r2_p;
+	__m256d delta_w_if_r3_p;
+
+	__m256d delta_w_else_r0_p;
+	__m256d delta_w_else_r1_p;
+	__m256d delta_w_else_r2_p;
+	__m256d delta_w_else_r3_p;
+
+
+	for (int f = 0; f < NUM_FILS; ++f)
+	{
+
+		alpha = alphas[f];
+		alphas_p = _mm256_set1_pd(alpha);
+
+		for (r = 0; r+3 < FIL_ROWS; r=r+4)
+		{
+			for (c = 0; c+3 < FIL_COLS; c=c+4)
+			{
+ 
+			    delta_w_r0_c0_p = _mm256_set1_pd(0.0);
+			    delta_w_r0_c1_p = _mm256_set1_pd(0.0);
+			    delta_w_r0_c2_p = _mm256_set1_pd(0.0);
+			    delta_w_r0_c3_p = _mm256_set1_pd(0.0);
+
+				delta_w_r1_c0_p = _mm256_set1_pd(0.0);
+				delta_w_r1_c1_p = _mm256_set1_pd(0.0);
+				delta_w_r1_c2_p = _mm256_set1_pd(0.0);
+				delta_w_r1_c3_p = _mm256_set1_pd(0.0);
+
+				delta_w_r2_c0_p = _mm256_set1_pd(0.0);
+				delta_w_r2_c1_p = _mm256_set1_pd(0.0);
+				delta_w_r2_c2_p = _mm256_set1_pd(0.0);
+				delta_w_r2_c3_p = _mm256_set1_pd(0.0);
+
+				delta_w_r3_c0_p = _mm256_set1_pd(0.0);
+				delta_w_r3_c1_p = _mm256_set1_pd(0.0);
+				delta_w_r3_c2_p = _mm256_set1_pd(0.0);
+				delta_w_r3_c3_p = _mm256_set1_pd(0.0);
+
+			    for (int b = 0; b < BATCH_SIZE; ++b)
+			    {
+
+			    	cur_image = shuffle_index[b+base];
+	    			for (int i = 0; i < N_ROWS_CONV; ++i)
+	    			{
+
+	    				for (int j = 0; j+3 < N_COLS_CONV; j=j+4)
+	    				{
+
+	    					INCREMENT_FLOPS(3)
+
+	    					conv_val_p     = _mm256_loadu_pd(   (conv_t->data) + ind_conv_out(b, f, i, j) );
+	    					del_conv_val_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
+
+	    					input_pixel_r0_c0_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r  , j+c  ) );
+	    					input_pixel_r0_c1_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r  , j+c+1) );
+	    					input_pixel_r0_c2_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r  , j+c+2) );
+	    					input_pixel_r0_c3_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r  , j+c+3) );
+
+	    					input_pixel_r1_c0_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+1, j+c  ) );
+	    					input_pixel_r1_c1_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+1, j+c+1) );
+	    					input_pixel_r1_c2_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+1, j+c+2) );
+	    					input_pixel_r1_c3_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+1, j+c+3) );
+
+	    					input_pixel_r2_c0_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+2, j+c  ) );
+	    					input_pixel_r2_c1_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+2, j+c+1) );
+	    					input_pixel_r2_c2_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+2, j+c+2) );
+	    					input_pixel_r2_c3_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+2, j+c+3) );
+
+	    					input_pixel_r3_c0_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+3, j+c  ) );
+	    					input_pixel_r3_c1_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+3, j+c+1) );
+	    					input_pixel_r3_c2_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+3, j+c+2) );
+	    					input_pixel_r3_c3_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r+3, j+c+3) ); 
+
+	    					// derivative of ReLU
+	    					vmask = _mm256_cmp_pd( conv_val_p, zeroes_p, 0x0e ); // 0x0e => GT
+	    					and_p = _mm256_and_pd( del_conv_val_p, and_p );
+
+	    					delta_w_r0_c0_p = _mm256_add_pd( delta_w_r0_c0_p, _mm256_mul_pd( and_p, input_pixel_r0_c0_p ) );
+	    					delta_w_r0_c1_p = _mm256_add_pd( delta_w_r0_c1_p, _mm256_mul_pd( and_p, input_pixel_r0_c1_p ) );
+	    					delta_w_r0_c2_p = _mm256_add_pd( delta_w_r0_c2_p, _mm256_mul_pd( and_p, input_pixel_r0_c2_p ) );
+	    					delta_w_r0_c3_p = _mm256_add_pd( delta_w_r0_c3_p, _mm256_mul_pd( and_p, input_pixel_r0_c3_p ) );
+
+	    					delta_w_r1_c0_p = _mm256_add_pd( delta_w_r1_c0_p, _mm256_mul_pd( and_p, input_pixel_r1_c0_p ) );
+	    					delta_w_r1_c1_p = _mm256_add_pd( delta_w_r1_c1_p, _mm256_mul_pd( and_p, input_pixel_r1_c1_p ) );
+	    					delta_w_r1_c2_p = _mm256_add_pd( delta_w_r1_c2_p, _mm256_mul_pd( and_p, input_pixel_r1_c2_p ) );
+	    					delta_w_r1_c3_p = _mm256_add_pd( delta_w_r1_c3_p, _mm256_mul_pd( and_p, input_pixel_r1_c3_p ) );
+
+	    					delta_w_r2_c0_p = _mm256_add_pd( delta_w_r2_c0_p, _mm256_mul_pd( and_p, input_pixel_r2_c0_p ) );
+	    					delta_w_r2_c1_p = _mm256_add_pd( delta_w_r2_c1_p, _mm256_mul_pd( and_p, input_pixel_r2_c1_p ) );
+	    					delta_w_r2_c2_p = _mm256_add_pd( delta_w_r2_c2_p, _mm256_mul_pd( and_p, input_pixel_r2_c2_p ) );
+	    					delta_w_r2_c3_p = _mm256_add_pd( delta_w_r2_c3_p, _mm256_mul_pd( and_p, input_pixel_r2_c3_p ) );
+
+	    					delta_w_r3_c0_p = _mm256_add_pd( delta_w_r3_c0_p, _mm256_mul_pd( and_p, input_pixel_r3_c0_p ) );
+	    					delta_w_r3_c1_p = _mm256_add_pd( delta_w_r3_c1_p, _mm256_mul_pd( and_p, input_pixel_r3_c1_p ) );
+	    					delta_w_r3_c2_p = _mm256_add_pd( delta_w_r3_c2_p, _mm256_mul_pd( and_p, input_pixel_r3_c2_p ) );
+	    					delta_w_r3_c3_p = _mm256_add_pd( delta_w_r3_c3_p, _mm256_mul_pd( and_p, input_pixel_r3_c3_p ) );
+	    				}
+	    			}
+			    }
+
+			    INCREMENT_FLOPS(7)
+
+
+			    // horizontally sum the four vectors
+				delta_w_1_r0_p = _mm256_hadd_pd(delta_w_r0_c0_p, delta_w_r0_c2_p);
+				delta_w_2_r0_p = _mm256_hadd_pd(delta_w_r0_c1_p, delta_w_r0_c3_p);
+
+				perm_1_r0_p = _mm256_permute4x64_pd(delta_w_1_r0_p, _MM_SHUFFLE(3,1,2,0));
+				perm_2_r0_p = _mm256_permute4x64_pd(delta_w_2_r0_p, _MM_SHUFFLE(3,1,2,0));
+
+				delta_w_final_r0_p = _mm256_hadd_pd( perm_1_r0_p, perm_2_r0_p );
+
+
+				delta_w_1_r1_p = _mm256_hadd_pd(delta_w_r1_c0_p, delta_w_r1_c2_p);
+				delta_w_2_r1_p = _mm256_hadd_pd(delta_w_r1_c1_p, delta_w_r1_c3_p);
+
+				perm_1_r1_p = _mm256_permute4x64_pd(delta_w_1_r1_p, _MM_SHUFFLE(3,1,2,0));
+				perm_2_r1_p = _mm256_permute4x64_pd(delta_w_2_r1_p, _MM_SHUFFLE(3,1,2,0));
+
+				delta_w_final_r1_p = _mm256_hadd_pd( perm_1_r1_p, perm_2_r1_p );
+
+
+				delta_w_1_r2_p = _mm256_hadd_pd(delta_w_r2_c0_p, delta_w_r2_c2_p);
+				delta_w_2_r2_p = _mm256_hadd_pd(delta_w_r2_c1_p, delta_w_r2_c3_p);
+
+				perm_1_r2_p = _mm256_permute4x64_pd(delta_w_1_r2_p, _MM_SHUFFLE(3,1,2,0));
+				perm_2_r2_p = _mm256_permute4x64_pd(delta_w_2_r2_p, _MM_SHUFFLE(3,1,2,0));
+
+				delta_w_final_r2_p = _mm256_hadd_pd( perm_1_r2_p, perm_2_r2_p );
+
+
+				delta_w_1_r3_p = _mm256_hadd_pd(delta_w_r3_c0_p, delta_w_r3_c2_p);
+				delta_w_2_r3_p = _mm256_hadd_pd(delta_w_r3_c1_p, delta_w_r3_c3_p);
+
+				perm_1_r3_p = _mm256_permute4x64_pd(delta_w_1_r3_p, _MM_SHUFFLE(3,1,2,0));
+				perm_2_r3_p = _mm256_permute4x64_pd(delta_w_2_r3_p, _MM_SHUFFLE(3,1,2,0));
+
+				delta_w_final_r3_p = _mm256_hadd_pd( perm_1_r3_p, perm_2_r3_p );
+
+
+
+			    weight_r0_p = _mm256_loadu_pd( (fil_w->data) + ind_fil_w(f, r  , c) );
+			    weight_r1_p = _mm256_loadu_pd( (fil_w->data) + ind_fil_w(f, r+1, c) );
+			    weight_r2_p = _mm256_loadu_pd( (fil_w->data) + ind_fil_w(f, r+2, c) );
+			    weight_r3_p = _mm256_loadu_pd( (fil_w->data) + ind_fil_w(f, r+3, c) );
+
+
+			       vmask_ones_r0   = _mm256_cmp_pd(weight_r0_p, ones_p , 0x02); //LE
+			      vmask_mones_r0   = _mm256_cmp_pd(weight_r0_p, mones_p, 0x0d); //GE
+			      vmask_final_r0   = _mm256_and_pd(vmask_ones_r0  , vmask_mones_r0); // if >= -1.00 && <= 1.00
+			        if_result_r0_p = _mm256_add_pd( _mm256_mul_pd(alphas_p, weight_r0_p), recip_n_p);
+			       delta_w_if_r0_p = _mm256_and_pd(vmask_final_r0, if_result_r0_p);
+				 delta_w_else_r0_p = _mm256_andnot_pd(vmask_final_r0, recip_n_p);
+				delta_w_final_r0_p = _mm256_mul_pd( delta_w_final_r0_p, _mm256_or_pd(delta_w_if_r0_p, delta_w_else_r0_p) );
+				_mm256_storeu_pd( (fil_w->data) + ind_fil_w(f, r  , c), _mm256_sub_pd( weight_r0_p, _mm256_mul_pd(multiplier_p, delta_w_final_r0_p) ) );
+
+				   vmask_ones_r1   = _mm256_cmp_pd(weight_r1_p, ones_p , 0x02); //LE
+			      vmask_mones_r1   = _mm256_cmp_pd(weight_r1_p, mones_p, 0x0d); //GE
+			      vmask_final_r1   = _mm256_and_pd(vmask_ones_r1  , vmask_mones_r1); // if >= -1.00 && <= 1.00
+			        if_result_r1_p = _mm256_add_pd( _mm256_mul_pd(alphas_p, weight_r1_p), recip_n_p);
+			       delta_w_if_r1_p = _mm256_and_pd(vmask_final_r1, if_result_r1_p);
+				 delta_w_else_r1_p = _mm256_andnot_pd(vmask_final_r1, recip_n_p);
+				delta_w_final_r1_p = _mm256_mul_pd( delta_w_final_r1_p, _mm256_or_pd(delta_w_if_r1_p, delta_w_else_r1_p) );
+				_mm256_storeu_pd( (fil_w->data) + ind_fil_w(f, r+1, c), _mm256_sub_pd( weight_r1_p, _mm256_mul_pd(multiplier_p, delta_w_final_r1_p) ) );
+
+				   vmask_ones_r2   = _mm256_cmp_pd(weight_r2_p, ones_p , 0x02); //LE
+			      vmask_mones_r2   = _mm256_cmp_pd(weight_r2_p, mones_p, 0x0d); //GE
+			      vmask_final_r2   = _mm256_and_pd(vmask_ones_r2  , vmask_mones_r2); // if >= -1.00 && <= 1.00
+			        if_result_r2_p = _mm256_add_pd( _mm256_mul_pd(alphas_p, weight_r2_p), recip_n_p);
+			       delta_w_if_r2_p = _mm256_and_pd(vmask_final_r2, if_result_r2_p);
+				 delta_w_else_r2_p = _mm256_andnot_pd(vmask_final_r2, recip_n_p);
+				delta_w_final_r2_p = _mm256_mul_pd( delta_w_final_r2_p, _mm256_or_pd(delta_w_if_r2_p, delta_w_else_r2_p) );
+				_mm256_storeu_pd( (fil_w->data) + ind_fil_w(f, r+2, c), _mm256_sub_pd( weight_r2_p, _mm256_mul_pd(multiplier_p, delta_w_final_r2_p) ) );
+
+				   vmask_ones_r3   = _mm256_cmp_pd(weight_r3_p, ones_p , 0x02); //LE
+			      vmask_mones_r3   = _mm256_cmp_pd(weight_r3_p, mones_p, 0x0d); //GE
+			      vmask_final_r3   = _mm256_and_pd(vmask_ones_r3  , vmask_mones_r3); // if >= -1.00 && <= 1.00
+			        if_result_r3_p = _mm256_add_pd( _mm256_mul_pd(alphas_p, weight_r3_p), recip_n_p);
+			       delta_w_if_r3_p = _mm256_and_pd(vmask_final_r3, if_result_r3_p);
+				 delta_w_else_r3_p = _mm256_andnot_pd(vmask_final_r3, recip_n_p);
+				delta_w_final_r3_p = _mm256_mul_pd( delta_w_final_r3_p, _mm256_or_pd(delta_w_if_r3_p, delta_w_else_r3_p) );
+				_mm256_storeu_pd( (fil_w->data) + ind_fil_w(f, r+3, c), _mm256_sub_pd( weight_r3_p, _mm256_mul_pd(multiplier_p, delta_w_final_r3_p) ) );
+			}
+
+
+			for (; c < FIL_COLS; ++c)
+			{
+ 
+			    delta_w_p = _mm256_set1_pd(0.0);
+
+			    for (int b = 0; b < BATCH_SIZE; ++b)
+			    {
+
+			    	cur_image = shuffle_index[b+base];
+	    			for (int i = 0; i < N_ROWS_CONV; ++i)
+	    			{
+
+	    				for (int j = 0; j+3 < N_COLS_CONV; j=j+4)
+	    				{
+
+	    					INCREMENT_FLOPS(3)
+
+	    					conv_val_p     = _mm256_loadu_pd(   (conv_t->data) + ind_conv_out(b, f, i, j) );
+	    					del_conv_val_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
+
+	    					input_pixel_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r, j+c) ); 
+
+	    					// derivative of ReLU
+	    					vmask = _mm256_cmp_pd( conv_val_p, zeroes_p, 0x0e ); // 0x0e => GT
+	    					and_p = _mm256_and_pd( del_conv_val_p, and_p );
+
+	    					delta_w_p = _mm256_add_pd( delta_w_p, _mm256_mul_pd( del_conv_val_p, input_pixel_p ) );
+	    				}
+	    			}
+			    }
+
+			    delta_w = delta_w_p[0] + delta_w_p[1] + delta_w_p[2] + delta_w_p[3];
+
+			    INCREMENT_FLOPS(7)
+
+
+			    // modifying delta_w to account for sign function applied on weights
+
+			    weight = (fil_w->data)[ind_fil_w(f, r, c)];
+			    if (weight <= 1 && weight >= -1)
+			    {
+			    	delta_w *= ( (alpha * weight) +  recip_n );
+			    }
+			    else
+		    	{
+		    		delta_w *= recip_n;
+		    	}
+			    
+			    (fil_w->data)[ind_fil_w(f, r, c)] = weight - MULTIPLIER*delta_w;
+			}
+		}
+
+		for (; r < FIL_ROWS; ++r)
+		{
+			for (c = 0; c+3 < FIL_COLS; c=c+4)
+			{
+ 
+			    delta_w_c0_p = _mm256_set1_pd(0.0);
+			    delta_w_c1_p = _mm256_set1_pd(0.0);
+			    delta_w_c2_p = _mm256_set1_pd(0.0);
+			    delta_w_c3_p = _mm256_set1_pd(0.0);
+
+			    for (int b = 0; b < BATCH_SIZE; ++b)
+			    {
+
+			    	cur_image = shuffle_index[b+base];
+	    			for (int i = 0; i < N_ROWS_CONV; ++i)
+	    			{
+
+	    				for (int j = 0; j+3 < N_COLS_CONV; j=j+4)
+	    				{
+
+	    					INCREMENT_FLOPS(3)
+
+	    					conv_val_p     = _mm256_loadu_pd(   (conv_t->data) + ind_conv_out(b, f, i, j) );
+	    					del_conv_val_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
+
+	    					input_pixel_c0_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r, j+c  ) );
+	    					input_pixel_c1_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r, j+c+1) );
+	    					input_pixel_c2_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r, j+c+2) );
+	    					input_pixel_c3_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r, j+c+3) ); 
+
+	    					// derivative of ReLU
+	    					vmask = _mm256_cmp_pd( conv_val_p, zeroes_p, 0x0e ); // 0x0e => GT
+	    					and_p = _mm256_and_pd( del_conv_val_p, and_p );
+
+	    					delta_w_c0_p = _mm256_add_pd( delta_w_c0_p, _mm256_mul_pd( and_p, input_pixel_c0_p ) );
+	    					delta_w_c1_p = _mm256_add_pd( delta_w_c1_p, _mm256_mul_pd( and_p, input_pixel_c1_p ) );
+	    					delta_w_c2_p = _mm256_add_pd( delta_w_c2_p, _mm256_mul_pd( and_p, input_pixel_c2_p ) );
+	    					delta_w_c3_p = _mm256_add_pd( delta_w_c3_p, _mm256_mul_pd( and_p, input_pixel_c3_p ) );
+	    				}
+	    			}
+			    }
+
+			    INCREMENT_FLOPS(7)
+
+
+			    // horizontally sum the four vectors
+				delta_w_1_p = _mm256_hadd_pd(delta_w_c0_p, delta_w_c2_p);
+				delta_w_2_p = _mm256_hadd_pd(delta_w_c1_p, delta_w_c3_p);
+
+				perm_1_p = _mm256_permute4x64_pd(delta_w_1_p, _MM_SHUFFLE(3,1,2,0));
+				perm_2_p = _mm256_permute4x64_pd(delta_w_2_p, _MM_SHUFFLE(3,1,2,0));
+
+				delta_w_final_p = _mm256_hadd_pd( perm_1_p, perm_2_p );
+
+
+			    weight_p = _mm256_loadu_pd( (fil_w->data) + ind_fil_w(f, r, c) );
+
+			    vmask_ones  = _mm256_cmp_pd(weight_p, ones_p , 0x02); //LE
+			    vmask_mones = _mm256_cmp_pd(weight_p, mones_p, 0x0d); //GE
+
+			    vmask_final = _mm256_and_pd(vmask_ones, vmask_mones); // if >= -1.00 && <= 1.00
+
+			    if_result_p = _mm256_add_pd( _mm256_mul_pd(alphas_p, weight_p), recip_n_p);
+
+			    delta_w_if_p   = _mm256_and_pd(vmask_final, if_result_p);
+				delta_w_else_p = _mm256_andnot_pd(vmask_final, recip_n_p);
+
+				delta_w_final_p     = _mm256_mul_pd( delta_w_final_p, _mm256_or_pd(delta_w_if_p, delta_w_else_p) );
+
+				_mm256_storeu_pd( (fil_w->data) + ind_fil_w(f, r, c), _mm256_sub_pd( weight_p, _mm256_mul_pd(multiplier_p, delta_w_final_p) ) );
+			}
+
+
+			for (; c < FIL_COLS; ++c)
+			{
+ 
+			    delta_w_p = _mm256_set1_pd(0.0);
+
+			    for (int b = 0; b < BATCH_SIZE; ++b)
+			    {
+
+			    	cur_image = shuffle_index[b+base];
+	    			for (int i = 0; i < N_ROWS_CONV; ++i)
+	    			{
+
+	    				for (int j = 0; j+3 < N_COLS_CONV; j=j+4)
+	    				{
+
+	    					INCREMENT_FLOPS(3)
+
+	    					conv_val_p     = _mm256_loadu_pd(   (conv_t->data) + ind_conv_out(b, f, i, j) );
+	    					del_conv_val_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
+
+	    					input_pixel_p  = _mm256_loadu_pd( (input_images->data) + ind_input_img(cur_image, i+r, j+c) ); 
+
+	    					// derivative of ReLU
+	    					vmask = _mm256_cmp_pd( conv_val_p, zeroes_p, 0x0e ); // 0x0e => GT
+	    					and_p = _mm256_and_pd( del_conv_val_p, and_p );
+
+	    					delta_w_p = _mm256_add_pd( delta_w_p, _mm256_mul_pd( del_conv_val_p, input_pixel_p ) );
+	    				}
+	    			}
+			    }
+
+			    delta_w = delta_w_p[0] + delta_w_p[1] + delta_w_p[2] + delta_w_p[3];
+
+			    INCREMENT_FLOPS(7)
+
+
+			    // modifying delta_w to account for sign function applied on weights
+
+			    weight = (fil_w->data)[ind_fil_w(f, r, c)];
+			    if (weight <= 1 && weight >= -1)
+			    {
+			    	delta_w *= ( (alpha * weight) +  recip_n );
+			    }
+			    else
+		    	{
+		    		delta_w *= recip_n;
+		    	}
+			    
+			    (fil_w->data)[ind_fil_w(f, r, c)] = weight - MULTIPLIER*delta_w;
+			}
+		}
+	}
+}
+
+// Vectorized: conv cols unrolled
 void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 {
 	double delta_b;
 	double conv_val;
 	double del_conv_val;
 
+	__m256d zeroes_p = _mm256_set1_pd(0.0);
+
+	__m256d conv_val_i0_p;
+	__m256d conv_val_i1_p;
+	__m256d conv_val_i2_p;
+	__m256d conv_val_i3_p;
+
+	__m256d del_conv_val_i0_p;
+	__m256d del_conv_val_i1_p;
+	__m256d del_conv_val_i2_p;
+	__m256d del_conv_val_i3_p;
+
+	__m256d vmask_i0;
+	__m256d vmask_i1;
+	__m256d vmask_i2;
+	__m256d vmask_i3;
+
+	__m256d and_i0_p;
+	__m256d and_i1_p;
+	__m256d and_i2_p;
+	__m256d and_i3_p;
+
+	__m256d delta_b_p;
+
+	int j;
+
 	for (int f = 0; f < NUM_FILS; ++f)
 	{
+		delta_b_p = _mm256_set1_pd(0.0);
 		delta_b = 0.0;
 
 		for (int b = 0; b < BATCH_SIZE; ++b)
 		{
-			for (int i = 0; i < N_ROWS_CONV; ++i)
+			for (int i = 0; i+3 < N_ROWS_CONV; i=i+4)
 			{
-				for (int j = 0; j < N_COLS_CONV; j=j+4)
+				for (j = 0; j+3 < N_COLS_CONV; j=j+4)
+				{
+					INCREMENT_FLOPS(32)
+
+					conv_val_i0_p = _mm256_loadu_pd( (conv_t->data) + ind_conv_out(b, f, i  , j) );
+					conv_val_i1_p = _mm256_loadu_pd( (conv_t->data) + ind_conv_out(b, f, i+1, j) );
+					conv_val_i2_p = _mm256_loadu_pd( (conv_t->data) + ind_conv_out(b, f, i+2, j) );
+					conv_val_i3_p = _mm256_loadu_pd( (conv_t->data) + ind_conv_out(b, f, i+3, j) );
+
+					del_conv_val_i0_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i  , j) );
+					del_conv_val_i1_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i+1, j) );
+					del_conv_val_i2_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i+2, j) );
+					del_conv_val_i3_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i+3, j) );
+
+					vmask_i0 = _mm256_cmp_pd(conv_val_i0_p, zeroes_p, 0x0e); // 0x0e => GT
+					vmask_i1 = _mm256_cmp_pd(conv_val_i1_p, zeroes_p, 0x0e);
+					vmask_i2 = _mm256_cmp_pd(conv_val_i2_p, zeroes_p, 0x0e);
+					vmask_i3 = _mm256_cmp_pd(conv_val_i3_p, zeroes_p, 0x0e);
+
+					and_i0_p = _mm256_and_pd(del_conv_val_i0_p, vmask_i0); // 0x0e => GT
+					and_i1_p = _mm256_and_pd(del_conv_val_i1_p, vmask_i1);
+					and_i2_p = _mm256_and_pd(del_conv_val_i2_p, vmask_i2);
+					and_i3_p = _mm256_and_pd(del_conv_val_i3_p, vmask_i3);
+
+
+					delta_b_p = _mm256_add_pd(delta_b_p, del_conv_val_i0_p);
+					delta_b_p = _mm256_add_pd(delta_b_p, del_conv_val_i1_p);
+					delta_b_p = _mm256_add_pd(delta_b_p, del_conv_val_i2_p);
+					delta_b_p = _mm256_add_pd(delta_b_p, del_conv_val_i3_p);
+				}
+
+				for (; j < N_COLS_CONV; ++j)
 				{
 					INCREMENT_FLOPS(2)
 
@@ -2508,7 +2944,7 @@ void update_conv_biases(tensor* fil_b, tensor* del_conv, tensor* conv_t)
 			}
 		}
 
-		INCREMENT_FLOPS(2)
-		(fil_b->data)[f] -= MULTIPLIER*delta_b;
+		INCREMENT_FLOPS(6)
+		(fil_b->data)[f] -= MULTIPLIER * (delta_b_p[1] + delta_b_p[1] + delta_b_p[2] + delta_b_p[3] + delta_b);
 	}
 }
