@@ -41,10 +41,15 @@ double convolve(tensor* t, int r, int c, int image_num, tensor* fil_w, tensor* f
 		for (int j = 0; j < FIL_COLS; ++j)
 		{
             for (int k = 0; k < FIL_DEPTH; ++k){
+
+            	INCREMENT_FLOPS(2)
+
 			    conv_val += (fil_w->data)[offset(fil_w, f, j, i, k)] * (t->data)[offset(t, shuffle_index[image_num], c+j, r+i, k)];
             }
 		}
 	}
+
+	INCREMENT_FLOPS(2)
 
 	conv_val += (fil_b->data)[offset(fil_b, f, 0, 0, 0)];
 
@@ -172,6 +177,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					for (int j = 0; j < FIL_COLS; ++j)
 					{
 						m_input_pixel = _mm256_set_pd(input_data[image_j_index1], prev2, input_data[image_j_index0], prev1);
+						
 						INCREMENT_FLOPS(12)
 						// --------------------------------------------filter 0-------------------------------------
 						if (fil_bin_w[0][i][j] == 1)

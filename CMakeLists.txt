@@ -57,6 +57,8 @@ set(SOURCE_FILES
     src/tensor.h
     src/back_prop.c
     src/back_prop.h
+    src/random_data.c
+    src/random_data.h
 )
 
 add_executable(FNC_XNORNET ${SOURCE_FILES})

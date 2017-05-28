@@ -301,7 +301,7 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 				{
 					for (j = 0; j+3 < N_COLS_POOL; j=j+4)
 					{
-						INCREMENT_FLOPS(2)
+						INCREMENT_FLOPS(128)
 
 						pool_i0_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i  , j ) );
 						pool_i1_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i+1, j ) );
@@ -355,6 +355,8 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 				}
 			}
 
+			INCREMENT_FLOPS(64)
+
 			sum_d0_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d0_p, sum_i1_d0_p ), _mm256_add_pd( sum_i2_d0_p, sum_i3_d0_p ) );
 			sum_d1_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d1_p, sum_i1_d1_p ), _mm256_add_pd( sum_i2_d1_p, sum_i3_d1_p ) );
 			sum_d2_p = _mm256_add_pd( _mm256_add_pd( sum_i0_d2_p, sum_i1_d2_p ), _mm256_add_pd( sum_i2_d2_p, sum_i3_d2_p ) );
@@ -388,7 +390,7 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 				{
 					for (j = 0; j+3 < N_COLS_POOL; j=j+4)
 					{
-						INCREMENT_FLOPS(2)
+						INCREMENT_FLOPS(32)
 
 						pool_i0_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i  , j ) );
 						pool_i1_p        = _mm256_loadu_pd( (pool_t->data)      +    ind_pool_out( b, f, i+1, j ) );
@@ -407,6 +409,8 @@ void feed_forward(tensor* pool_t, tensor* fully_con_out, tensor* fully_con_w, te
 					}
 				}
 			}
+
+			INCREMENT_FLOPS(16)
 
 			sum_p = _mm256_add_pd( _mm256_add_pd( sum_i0_p, sum_i1_p ), _mm256_add_pd( sum_i2_p, sum_i3_p ) );
 

@@ -9,7 +9,10 @@
 #include "pool_layer.h"
 #include "common.h"
 #include "xnornet.h"
+#include "random_data.h"
+#include <string.h>
 #include <time.h>
+#include <stdlib.h>
 
 void print_pool_mat(int mat1[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int mat2[BATCH_SIZE][NUM_FILS][N_ROWS_POOL][N_COLS_POOL], int num);
 double validate();

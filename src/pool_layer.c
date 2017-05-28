@@ -40,7 +40,7 @@ void max_pooling(tensor* conv_t, tensor* pool_t, int pool_index_i[][NUM_FILS][N_
 						max_j = j;
 					}
 
-					if (conv_val_1)
+					if (conv_val_1 > max)
 					{
 						max   = conv_val_1;
 						max_i = i;
