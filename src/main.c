@@ -72,7 +72,7 @@ double update_softmax_biases_cycles;
 double update_conv_weights_cycles;
 double update_conv_biases_cycles;
 
-int main()
+int main(int argc, char* argv[])
 {
     perf_init();
     TOTAL_FLOPS = 0;
@@ -85,7 +85,13 @@ int main()
 
     set_paths();
 
-    read_mnist_images_labels(TRAIN_IMAGES, TRAIN_LABELS, &input_images, &labels);
+    if (argc == 4 && !strcmp(argv[1], "random")){
+        int image_cols = atoi(argv[2]);
+        int image_rows = atoi(argv[3]);
+        random_data(image_cols, image_rows, &input_images, &labels);
+    } else{
+        read_mnist_images_labels(TRAIN_IMAGES, TRAIN_LABELS, &input_images, &labels);
+    }
 
     /*printf("number_of_images=%d\n", NUM_IMAGES);
     printf("number_of_labels=%d\n", NUM_IMAGES);
@@ -720,5 +726,3 @@ initialize_cycle_counter()
     update_conv_weights_cycles = 0;
     update_conv_biases_cycles = 0;
 }
-
-
