@@ -499,7 +499,7 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 
 					for (int b = 0; b < BATCH_SIZE; ++b)
 					{
-						INCREMENT_FLOPS(3)
+						INCREMENT_FLOPS(33)
 
 						cur_label   = labels[shuffle_index[base+b]];
 						cur_label_p = _mm256_set1_pd(cur_label);
@@ -536,7 +536,7 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 					pool_index2 -= SIZE_POOL_OUT;
 					pool_index3 -= SIZE_POOL_OUT;
 
-					INCREMENT_FLOPS(2)
+					INCREMENT_FLOPS(32)
 
 					//printf("%d\n", ind_fully_con_w(d, f, r, c) == fully_index0);
 					//printf("%d\n", ind_fully_con_w(d, f, r+1, c) == fully_index1);
@@ -583,7 +583,7 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 
 					for (int b = 0; b < BATCH_SIZE; ++b)
 					{
-						INCREMENT_FLOPS(3)
+						INCREMENT_FLOPS(9)
 
 						cur_label = labels[shuffle_index[base+b]];
 
@@ -613,7 +613,7 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 					pool_index2 -= SIZE_POOL_OUT;
 					pool_index3 -= SIZE_POOL_OUT;
 
-					INCREMENT_FLOPS(2)
+					INCREMENT_FLOPS(8)
 
 					//printf("%d\n", ind_fully_con_w(d, f, r, c) == fully_index0);
 					//printf("%d\n", ind_fully_con_w(d, f, r+1, c) == fully_index1);
@@ -658,7 +658,7 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 
 					for (int b = 0; b < BATCH_SIZE; ++b)
 					{
-						INCREMENT_FLOPS(3)
+						INCREMENT_FLOPS(9)
 
 						cur_label   = labels[shuffle_index[base+b]];
 						cur_label_p = _mm256_set1_pd(cur_label);
@@ -676,7 +676,7 @@ void update_sotmax_weights(tensor* fully_con_w, tensor* softmax_out, tensor* poo
 
 					pool_index0 -= SIZE_POOL_OUT;
 
-					INCREMENT_FLOPS(2)
+					INCREMENT_FLOPS(8)
 
 					//w_p = _mm256_loadu_pd( (fully_con_w->data) + ind_fully_con_w(d, f, r, c) );
 					w_p = _mm256_loadu_pd( fully_con_w_data + fully_index0 );
@@ -1725,12 +1725,13 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 
 				for (; c < N_COLS_POOL; ++c)
 				{
-					INCREMENT_FLOPS(3)
 
 					sum = 0.0;
 
 					for (int d = 0; d < N_DIGS; ++d)
 					{
+
+						INCREMENT_FLOPS(3)
 
 						out = (softmax_out->data)[ind_softmax_out(b, d)];
 
@@ -1759,6 +1760,9 @@ void bp_softmax_to_conv(tensor* del_conv, tensor* softmax_out, tensor* conv_t, i
 
 void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor* input_images, int base, int shuffle_index[])
 {
+
+	INCREMENT_FLOPS(1)
+
 	int multiplier = (LEARN_RATE/BATCH_SIZE);
 	for (int f = 0; f < NUM_FILS; ++f)
 	{
@@ -1775,6 +1779,9 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 		    		{
 		    			for (int j = 0; j < N_COLS_CONV; ++j)
 		    			{
+
+		    				INCREMENT_FLOPS(3)
+
 		    				if( (conv_t->data)[offset(conv_t, b, j , i, f)] > 0.0 )
 		    				{
 		    					delta_w += (del_conv->data)[offset(del_conv, b, j , i, f)]*
@@ -1783,6 +1790,8 @@ void update_conv_weights(tensor* fil_w, tensor* del_conv, tensor* conv_t, tensor
 		    			}
 		    		}
 		    	}
+
+		    	INCREMENT_FLOPS(2)
 
 		    	(fil_w->data)[offset(fil_w, f, r, c, 0)] -= multiplier*delta_w;
 			}
@@ -2678,7 +2687,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    				for (int j = 0; j+3 < N_COLS_CONV; j=j+4)
 	    				{
 
-	    					INCREMENT_FLOPS(3)
+	    					INCREMENT_FLOPS(132)
 
 	    					conv_val_p     = _mm256_loadu_pd(   (conv_t->data) + ind_conv_out(b, f, i, j) );
 	    					del_conv_val_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
@@ -2730,7 +2739,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    			}
 			    }
 
-			    INCREMENT_FLOPS(7)
+			    INCREMENT_FLOPS(48)
 
 
 			    // horizontally sum the four vectors
@@ -2769,6 +2778,8 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 
 				delta_w_final_r3_p = _mm256_hadd_pd( perm_1_r3_p, perm_2_r3_p );
 
+
+				INCREMENT_FLOPS(80)
 
 
 			    weight_r0_p = _mm256_loadu_pd( (fil_w->data) + ind_fil_w(f, r  , c) );
@@ -2830,7 +2841,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    				for (int j = 0; j+3 < N_COLS_CONV; j=j+4)
 	    				{
 
-	    					INCREMENT_FLOPS(3)
+	    					INCREMENT_FLOPS(12)
 
 	    					conv_val_p     = _mm256_loadu_pd(   (conv_t->data) + ind_conv_out(b, f, i, j) );
 	    					del_conv_val_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
@@ -2846,10 +2857,9 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    			}
 			    }
 
+			    INCREMENT_FLOPS(10)
+
 			    delta_w = delta_w_p[0] + delta_w_p[1] + delta_w_p[2] + delta_w_p[3];
-
-			    INCREMENT_FLOPS(7)
-
 
 			    // modifying delta_w to account for sign function applied on weights
 
@@ -2887,7 +2897,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    				for (int j = 0; j+3 < N_COLS_CONV; j=j+4)
 	    				{
 
-	    					INCREMENT_FLOPS(3)
+	    					INCREMENT_FLOPS(36)
 
 	    					conv_val_p     = _mm256_loadu_pd(   (conv_t->data) + ind_conv_out(b, f, i, j) );
 	    					del_conv_val_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
@@ -2909,7 +2919,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    			}
 			    }
 
-			    INCREMENT_FLOPS(7)
+			    INCREMENT_FLOPS(32)
 
 
 			    // horizontally sum the four vectors
@@ -2955,7 +2965,7 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    				for (int j = 0; j+3 < N_COLS_CONV; j=j+4)
 	    				{
 
-	    					INCREMENT_FLOPS(3)
+	    					INCREMENT_FLOPS(12)
 
 	    					conv_val_p     = _mm256_loadu_pd(   (conv_t->data) + ind_conv_out(b, f, i, j) );
 	    					del_conv_val_p = _mm256_loadu_pd( (del_conv->data) + ind_conv_out(b, f, i, j) );
@@ -2971,10 +2981,9 @@ void bin_update_conv_weights(tensor* fil_w, tensor* fil_bin_w, double alphas[NUM
 	    			}
 			    }
 
+			    INCREMENT_FLOPS(10)
+
 			    delta_w = delta_w_p[0] + delta_w_p[1] + delta_w_p[2] + delta_w_p[3];
-
-			    INCREMENT_FLOPS(7)
-
 
 			    // modifying delta_w to account for sign function applied on weights
 
