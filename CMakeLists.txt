@@ -31,7 +31,7 @@ include_directories(include)
 if (CMAKE_C_COMPILER_ID MATCHES "Clang")
 
     # clang - CC flags
-    set(CMAKE_C_FLAGS "-O3")
+    set(CMAKE_C_FLAGS "-O3 -mavx2 -mfma -ffp-contract=fast -ffast-math -funroll-loops -ftree-vectorize")
 
 elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
 

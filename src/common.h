@@ -11,7 +11,7 @@
 #define POOL_DIM 2
 #define N_DIGS 10
 #define LEARN_RATE 0.01
-#define BINARY_NET 2
+#define BINARY_NET 0
 
 #include <stdio.h>
 
@@ -48,8 +48,8 @@ extern int N_BATCHES;
 #define NUM_EPOCHS 				20
 #define COUNT_BATCHES			NUM_TRAIN/BATCH_SIZE
 #define INCREMENT_FLOPS(i)		;
-#define PRINT_FLOPS()  			printf("Total flops=2736047\n"); //binary net = 1775972, xnor net = 2390692
-#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*2736047/cycles);
+#define PRINT_FLOPS()  			printf("Total flops=1372222\n"); //binary net = 1872074, xnor net = 2469514, normal=1372222
+#define PRINT_PERF(cycles)      printf("performace =%f flops/cycle\n", 1.0*1372222/cycles);
 
 #endif
 
