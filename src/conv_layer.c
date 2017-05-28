@@ -599,72 +599,126 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 					{
 						// load filters
 						j00 = fil_bin_w[0][i][j];
-            j10 = fil_bin_w[0][i][j+1];
-            j01 = fil_bin_w[1][i][j];
-            j11 = fil_bin_w[1][i][j+1];
-            j02 = fil_bin_w[2][i][j];
-            j12 = fil_bin_w[2][i][j+1];
+            			j10 = fil_bin_w[0][i][j+1];
+            			j01 = fil_bin_w[1][i][j];
+            			j11 = fil_bin_w[1][i][j+1];
+            			j02 = fil_bin_w[2][i][j];
+            			j12 = fil_bin_w[2][i][j+1];
 						m_weight_ps_f0 = _mm256_set_ps(j10,j10,j10,j10,j00,j00,j00,j00);
 						m_weight_ps_f1 = _mm256_set_ps(j11,j11,j11,j11,j01,j01,j01,j01);
 						m_weight_ps_f2 = _mm256_set_ps(j12,j12,j12,j12,j02,j02,j02,j02);
 
 						// load pixels from inputs
 						m_input_pixel_ps = _mm256_set_ps(
-              bin_input_images[b][i+r+1][j+c+2],
-              bin_input_images[b][i+r+1][j+c+1],
-              bin_input_images[b][i+r][j+c+2],
-              bin_input_images[b][i+r][j+c+1],
-              bin_input_images[b][i+r+1][j+c+1],
-              bin_input_images[b][i+r+1][j+c],
-              bin_input_images[b][i+r][j+c+1],
-              bin_input_images[b][i+r][j+c]);
+              			bin_input_images[b][i+r+1][j+c+2],
+              			bin_input_images[b][i+r+1][j+c+1],
+              			bin_input_images[b][i+r][j+c+2],
+              			bin_input_images[b][i+r][j+c+1],
+              			bin_input_images[b][i+r+1][j+c+1],
+              			bin_input_images[b][i+r+1][j+c],
+              			bin_input_images[b][i+r][j+c+1],
+              			bin_input_images[b][i+r][j+c]);
 
-            // if(j00 && j10){
-            //   m_conv_val_ps_f0 += m_input_pixel_ps;
-            // }
-            // else if(!j00 && !j10){
-            //   m_conv_val_ps_f0 -= m_input_pixel_ps;
-            // }
-            // else if(j00==1){
-            //   m_conv_val_ps_f0 += _mm256_set_ps(-j10,-j10,-j10,-j10,j00,j00,j00,j00);
-            // }
-            // else {
-            //   m_conv_val_ps_f0 += _mm256_set_ps(j10,j10,j10,j10,-j00,-j00,-j00,-j00);
-            // }
-            //
-            // if(j01 && j11){
-            //   m_conv_val_ps_f1 += m_input_pixel_ps;
-            // }
-            // else if(!j01 && !j11){
-            //   m_conv_val_ps_f1 -= m_input_pixel_ps;
-            // }
-            // else if(j01==1){
-            //   m_conv_val_ps_f1 += _mm256_set_ps(-j11,-j11,-j11,-j11,j01,j01,j01,j01);
-            // }
-            // else {
-            //   m_conv_val_ps_f1 += _mm256_set_ps(j11,j11,j11,j11,-j01,-j01,-j01,-j01);
-            // }
-            //
-            // if(j02 && j12){
-            //   m_conv_val_ps_f2 += m_input_pixel_ps;
-            // }
-            // else if(!j02 && !j12){
-            //   m_conv_val_ps_f2 -= m_input_pixel_ps;
-            // }
-            // else if(j02==1){
-            //   m_conv_val_ps_f2 += _mm256_set_ps(-j12,-j12,-j12,-j12,j02,j02,j02,j02);
-            // }
-            // else {
-            //   m_conv_val_ps_f2 += _mm256_set_ps(j12,j12,j12,j12,-j02,-j02,-j02,-j02);
-            // }
-						//do element wise product
+			            if(j00 == 1 && j10 == 1){
+			              m_conv_val_ps_f0 += m_input_pixel_ps;
+			            }
+			            else if(j00 == -1 && j10 == -1){
+			              m_conv_val_ps_f0 -= m_input_pixel_ps;
+			            }
+			            else if(j00 == 1){
+			              m_conv_val_ps_f0 += _mm256_set_ps(
+															-bin_input_images[b][i+r+1][j+c+2],
+															-bin_input_images[b][i+r+1][j+c+1],
+															-bin_input_images[b][i+r][j+c+2],
+															-bin_input_images[b][i+r][j+c+1],
+															bin_input_images[b][i+r+1][j+c+1],
+															bin_input_images[b][i+r+1][j+c],
+															bin_input_images[b][i+r][j+c+1],
+															bin_input_images[b][i+r][j+c]
+															);
+			            }
+			            else {
+			              m_conv_val_ps_f0 += _mm256_set_ps(
+              												bin_input_images[b][i+r+1][j+c+2],
+              												bin_input_images[b][i+r+1][j+c+1],
+              												bin_input_images[b][i+r][j+c+2],
+              												bin_input_images[b][i+r][j+c+1],
+              												-bin_input_images[b][i+r+1][j+c+1],
+              												-bin_input_images[b][i+r+1][j+c],
+              												-bin_input_images[b][i+r][j+c+1],
+              												-bin_input_images[b][i+r][j+c]
+              												);
+			            }
+			            
+			            if(j01 == 1 && j11 == 1){
+			              m_conv_val_ps_f1 += m_input_pixel_ps;
+			            }
+			            else if(j01 == -1 && j11 == -1){
+			              m_conv_val_ps_f1 -= m_input_pixel_ps;
+			            }
+			            else if(j01 == 1){
+			              m_conv_val_ps_f1 += _mm256_set_ps(
+															-bin_input_images[b][i+r+1][j+c+2],
+															-bin_input_images[b][i+r+1][j+c+1],
+															-bin_input_images[b][i+r][j+c+2],
+															-bin_input_images[b][i+r][j+c+1],
+															bin_input_images[b][i+r+1][j+c+1],
+															bin_input_images[b][i+r+1][j+c],
+															bin_input_images[b][i+r][j+c+1],
+															bin_input_images[b][i+r][j+c]
+															);
+			            }
+			            else {
+			              m_conv_val_ps_f1 += _mm256_set_ps(
+              												bin_input_images[b][i+r+1][j+c+2],
+              												bin_input_images[b][i+r+1][j+c+1],
+              												bin_input_images[b][i+r][j+c+2],
+              												bin_input_images[b][i+r][j+c+1],
+              												-bin_input_images[b][i+r+1][j+c+1],
+              												-bin_input_images[b][i+r+1][j+c],
+              												-bin_input_images[b][i+r][j+c+1],
+              												-bin_input_images[b][i+r][j+c]
+              												);
+			            }
+			            
+			            if(j02 == 1 && j12 == 1){
+			              m_conv_val_ps_f2 += m_input_pixel_ps;
+			            }
+			            else if(j02 == -1 && j12 == -1){
+			              m_conv_val_ps_f2 -= m_input_pixel_ps;
+			            }
+			            else if(j02 == 1){
+			              m_conv_val_ps_f2 += _mm256_set_ps(
+															-bin_input_images[b][i+r+1][j+c+2],
+															-bin_input_images[b][i+r+1][j+c+1],
+															-bin_input_images[b][i+r][j+c+2],
+															-bin_input_images[b][i+r][j+c+1],
+															bin_input_images[b][i+r+1][j+c+1],
+															bin_input_images[b][i+r+1][j+c],
+															bin_input_images[b][i+r][j+c+1],
+															bin_input_images[b][i+r][j+c]
+															);
+			            }
+			            else {
+			              m_conv_val_ps_f2 += _mm256_set_ps(
+              												bin_input_images[b][i+r+1][j+c+2],
+              												bin_input_images[b][i+r+1][j+c+1],
+              												bin_input_images[b][i+r][j+c+2],
+              												bin_input_images[b][i+r][j+c+1],
+              												-bin_input_images[b][i+r+1][j+c+1],
+              												-bin_input_images[b][i+r+1][j+c],
+              												-bin_input_images[b][i+r][j+c+1],
+              												-bin_input_images[b][i+r][j+c]
+              												);
+			            }
+						/*//do element wise product
 						m_conv_val_ps_f0 = _mm256_add_ps(m_conv_val_ps_f0, _mm256_mul_ps(m_input_pixel_ps, m_weight_ps_f0));
 
 						m_conv_val_ps_f1 = _mm256_add_ps(m_conv_val_ps_f1, _mm256_mul_ps(m_input_pixel_ps, m_weight_ps_f1));
 
 						m_conv_val_ps_f2 = _mm256_add_ps(m_conv_val_ps_f2, _mm256_mul_ps(m_input_pixel_ps, m_weight_ps_f2));
 
-						//store loaded pixels for reuse in next iteration
+						//store loaded pixels for reuse in next iteration*/
 					}
           // load filters
           m_weight_f0 = _mm256_set1_pd(fil_bin_w[0][i][4]);
