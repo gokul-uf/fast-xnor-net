@@ -177,7 +177,7 @@ void bin_convolve_pool(tensor* input_t, tensor* conv_t, tensor* pool_t, int batc
 					for (int j = 0; j < FIL_COLS; ++j)
 					{
 						m_input_pixel = _mm256_set_pd(input_data[image_j_index1], prev2, input_data[image_j_index0], prev1);
-						
+
 						INCREMENT_FLOPS(12)
 						// --------------------------------------------filter 0-------------------------------------
 						if (fil_bin_w[0][i][j] == 1)
@@ -595,147 +595,26 @@ void xnor_convolve_pool(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS]
 				for (int i = 0; i < FIL_ROWS; ++i)
 				{
 
-					for (int j = 0; j < FIL_COLS-1; j+=2)
+					for (int j = 0; j < FIL_COLS; j++)
 					{
-						// load filters
-						j00 = fil_bin_w[0][i][j];
-            			j10 = fil_bin_w[0][i][j+1];
-            			j01 = fil_bin_w[1][i][j];
-            			j11 = fil_bin_w[1][i][j+1];
-            			j02 = fil_bin_w[2][i][j];
-            			j12 = fil_bin_w[2][i][j+1];
-						m_weight_ps_f0 = _mm256_set_ps(j10,j10,j10,j10,j00,j00,j00,j00);
-						m_weight_ps_f1 = _mm256_set_ps(j11,j11,j11,j11,j01,j01,j01,j01);
-						m_weight_ps_f2 = _mm256_set_ps(j12,j12,j12,j12,j02,j02,j02,j02);
+            // load filters
+            m_weight_f0 = _mm256_set1_pd(fil_bin_w[0][i][j]);
+            m_weight_f1 = _mm256_set1_pd(fil_bin_w[1][i][j]);
+            m_weight_f2 = _mm256_set1_pd(fil_bin_w[2][i][j]);
 
-						// load pixels from inputs
-						m_input_pixel_ps = _mm256_set_ps(
-              			bin_input_images[b][i+r+1][j+c+2],
-              			bin_input_images[b][i+r+1][j+c+1],
-              			bin_input_images[b][i+r][j+c+2],
-              			bin_input_images[b][i+r][j+c+1],
-              			bin_input_images[b][i+r+1][j+c+1],
-              			bin_input_images[b][i+r+1][j+c],
-              			bin_input_images[b][i+r][j+c+1],
-              			bin_input_images[b][i+r][j+c]);
+            // load pixels from inputs
+            m_input_pixel = _mm256_set_pd(
+              bin_input_images[b][i+r+1][c+j+1],
+              bin_input_images[b][i+r+1][c+j],
+              bin_input_images[b][i+r][c+j+1],
+              bin_input_images[b][i+r][c+j]);
 
-			            if(j00 == 1 && j10 == 1){
-			              m_conv_val_ps_f0 += m_input_pixel_ps;
-			            }
-			            else if(j00 == -1 && j10 == -1){
-			              m_conv_val_ps_f0 -= m_input_pixel_ps;
-			            }
-			            else if(j00 == 1){
-			              m_conv_val_ps_f0 += _mm256_set_ps(
-															-bin_input_images[b][i+r+1][j+c+2],
-															-bin_input_images[b][i+r+1][j+c+1],
-															-bin_input_images[b][i+r][j+c+2],
-															-bin_input_images[b][i+r][j+c+1],
-															bin_input_images[b][i+r+1][j+c+1],
-															bin_input_images[b][i+r+1][j+c],
-															bin_input_images[b][i+r][j+c+1],
-															bin_input_images[b][i+r][j+c]
-															);
-			            }
-			            else {
-			              m_conv_val_ps_f0 += _mm256_set_ps(
-              												bin_input_images[b][i+r+1][j+c+2],
-              												bin_input_images[b][i+r+1][j+c+1],
-              												bin_input_images[b][i+r][j+c+2],
-              												bin_input_images[b][i+r][j+c+1],
-              												-bin_input_images[b][i+r+1][j+c+1],
-              												-bin_input_images[b][i+r+1][j+c],
-              												-bin_input_images[b][i+r][j+c+1],
-              												-bin_input_images[b][i+r][j+c]
-              												);
-			            }
-			            
-			            if(j01 == 1 && j11 == 1){
-			              m_conv_val_ps_f1 += m_input_pixel_ps;
-			            }
-			            else if(j01 == -1 && j11 == -1){
-			              m_conv_val_ps_f1 -= m_input_pixel_ps;
-			            }
-			            else if(j01 == 1){
-			              m_conv_val_ps_f1 += _mm256_set_ps(
-															-bin_input_images[b][i+r+1][j+c+2],
-															-bin_input_images[b][i+r+1][j+c+1],
-															-bin_input_images[b][i+r][j+c+2],
-															-bin_input_images[b][i+r][j+c+1],
-															bin_input_images[b][i+r+1][j+c+1],
-															bin_input_images[b][i+r+1][j+c],
-															bin_input_images[b][i+r][j+c+1],
-															bin_input_images[b][i+r][j+c]
-															);
-			            }
-			            else {
-			              m_conv_val_ps_f1 += _mm256_set_ps(
-              												bin_input_images[b][i+r+1][j+c+2],
-              												bin_input_images[b][i+r+1][j+c+1],
-              												bin_input_images[b][i+r][j+c+2],
-              												bin_input_images[b][i+r][j+c+1],
-              												-bin_input_images[b][i+r+1][j+c+1],
-              												-bin_input_images[b][i+r+1][j+c],
-              												-bin_input_images[b][i+r][j+c+1],
-              												-bin_input_images[b][i+r][j+c]
-              												);
-			            }
-			            
-			            if(j02 == 1 && j12 == 1){
-			              m_conv_val_ps_f2 += m_input_pixel_ps;
-			            }
-			            else if(j02 == -1 && j12 == -1){
-			              m_conv_val_ps_f2 -= m_input_pixel_ps;
-			            }
-			            else if(j02 == 1){
-			              m_conv_val_ps_f2 += _mm256_set_ps(
-															-bin_input_images[b][i+r+1][j+c+2],
-															-bin_input_images[b][i+r+1][j+c+1],
-															-bin_input_images[b][i+r][j+c+2],
-															-bin_input_images[b][i+r][j+c+1],
-															bin_input_images[b][i+r+1][j+c+1],
-															bin_input_images[b][i+r+1][j+c],
-															bin_input_images[b][i+r][j+c+1],
-															bin_input_images[b][i+r][j+c]
-															);
-			            }
-			            else {
-			              m_conv_val_ps_f2 += _mm256_set_ps(
-              												bin_input_images[b][i+r+1][j+c+2],
-              												bin_input_images[b][i+r+1][j+c+1],
-              												bin_input_images[b][i+r][j+c+2],
-              												bin_input_images[b][i+r][j+c+1],
-              												-bin_input_images[b][i+r+1][j+c+1],
-              												-bin_input_images[b][i+r+1][j+c],
-              												-bin_input_images[b][i+r][j+c+1],
-              												-bin_input_images[b][i+r][j+c]
-              												);
-			            }
-						/*//do element wise product
-						m_conv_val_ps_f0 = _mm256_add_ps(m_conv_val_ps_f0, _mm256_mul_ps(m_input_pixel_ps, m_weight_ps_f0));
-
-						m_conv_val_ps_f1 = _mm256_add_ps(m_conv_val_ps_f1, _mm256_mul_ps(m_input_pixel_ps, m_weight_ps_f1));
-
-						m_conv_val_ps_f2 = _mm256_add_ps(m_conv_val_ps_f2, _mm256_mul_ps(m_input_pixel_ps, m_weight_ps_f2));
-
-						//store loaded pixels for reuse in next iteration*/
+            // do element wise product
+            m_conv_val_f0 = _mm256_add_pd(m_conv_val_f0, _mm256_mul_pd(m_input_pixel, m_weight_f0));
+            m_conv_val_f1 = _mm256_add_pd(m_conv_val_f1, _mm256_mul_pd(m_input_pixel, m_weight_f1));
+            m_conv_val_f2 = _mm256_add_pd(m_conv_val_f2, _mm256_mul_pd(m_input_pixel, m_weight_f2));
 					}
-          // load filters
-          m_weight_f0 = _mm256_set1_pd(fil_bin_w[0][i][4]);
-          m_weight_f1 = _mm256_set1_pd(fil_bin_w[1][i][4]);
-          m_weight_f2 = _mm256_set1_pd(fil_bin_w[2][i][4]);
 
-          // load pixels from inputs
-          m_input_pixel = _mm256_set_pd(
-            bin_input_images[b][i+r+1][c+5],
-            bin_input_images[b][i+r+1][c+4],
-            bin_input_images[b][i+r][c+5],
-            bin_input_images[b][i+r][c+4]);
-
-          // do element wise product
-          m_conv_val_f0 = _mm256_add_pd(m_conv_val_f0, _mm256_mul_pd(m_input_pixel, m_weight_f0));
-          m_conv_val_f1 = _mm256_add_pd(m_conv_val_f1, _mm256_mul_pd(m_input_pixel, m_weight_f1));
-          m_conv_val_f2 = _mm256_add_pd(m_conv_val_f2, _mm256_mul_pd(m_input_pixel, m_weight_f2));
 				}
 
         m_conv_val_f0 = _mm256_add_pd(m_conv_val_f0,
