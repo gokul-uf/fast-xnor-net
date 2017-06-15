@@ -36,7 +36,7 @@ if (CMAKE_C_COMPILER_ID MATCHES "Clang")
 elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
 
     # GNU GCC - CC flags
-    set(CMAKE_C_FLAGS "-O3 -fno-tree-vectorize")
+    set(CMAKE_C_FLAGS "-O3 -mavx2 -mfma -ffp-contract=fast -ffast-math -funroll-loops -ftree-vectorize")
 
 endif()
 
