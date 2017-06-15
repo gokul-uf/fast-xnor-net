@@ -12,7 +12,7 @@ void convolution(tensor* input_t, tensor* conv_t, int batch_size,
 		{
 			for (int i = 0; i < N_ROWS_CONV; ++i)
 			{
-				for (int j = 0; j < N_ROWS_CONV; ++j)
+				for (int j = 0; j < N_COLS_CONV; ++j)
 				{
 					(conv_t->data)[offset(conv_t,b,j,i,f)] = convolve(input_t, i, j, b+base, fil_w, fil_b, f, shuffle_index);
 				}
@@ -31,7 +31,7 @@ void bin_convolution(tensor* input_t, tensor* conv_t, int batch_size,
 		{
 			for (int i = 0; i < N_ROWS_CONV; ++i)
 			{
-				for (int j = 0; j < N_ROWS_CONV; ++j)
+				for (int j = 0; j < N_COLS_CONV; ++j)
 				{
 					(conv_t->data)[offset(conv_t,b,j,i,f)] = bin_convolve(input_t, i, j, b+base,
 																fil_bin_w, alphas, fil_b, f, shuffle_index);
@@ -51,7 +51,7 @@ void xnor_convolution(int bin_input_images[BATCH_SIZE][IMAGE_ROWS][IMAGE_COLS], 
 		{
 			for (int i = 0; i < N_ROWS_CONV; ++i)
 			{
-				for (int j = 0; j < N_ROWS_CONV; ++j)
+				for (int j = 0; j < N_COLS_CONV; ++j)
 				{
 					(conv_t->data)[offset(conv_t,b,j,i,f)] = xnor_convolve(bin_input_images, betas, i, j, b,
 																fil_bin_w, alphas, fil_b, f);

@@ -12,6 +12,7 @@ int N_COLS_POOL;
 int NUM_TRAIN;
 int N_BATCHES;
 int TOTAL_FLOPS;
+int NET_TYPE;
 
 int* shuffle_index;
 
@@ -71,10 +72,42 @@ double update_softmax_biases_cycles = 0;
 double update_conv_weights_cycles = 0;
 double update_conv_biases_cycles = 0;
 
-int main(){
-    perf_init();
-    TOTAL_FLOPS = 0;
+int main(int argc, char* argv[]){
+
     printf("starting program\n");
+
+    if (argc < 2)
+    {
+      printf("Please enter the net type(0->NORMAL_NET, 1->BINARY_NET, 2->XNOR_NET) which you want to run\n");
+      return;
+    }
+
+    NET_TYPE = argv[1][0] - '0';
+    printf("%d\n", NET_TYPE);
+
+    if (NET_TYPE == 0)
+    {
+      TOTAL_FLOPS = NORMAL_FLOPS;
+    }
+    else if (NET_TYPE == 1)
+    {
+      TOTAL_FLOPS = BINARY_FLOPS;
+    }
+    else if (NET_TYPE == 2)
+    {
+      TOTAL_FLOPS = XNOR_FLOPS;
+    }
+    else
+    {
+      printf("Wrong net type entered. Please enter (0->NORMAL_NET, 1->BINARY_NET, 2->XNOR_NET)\n");
+      return;
+    }
+
+    perf_init();
+  
+    #ifdef COUNT_FLOPS
+      TOTAL_FLOPS = 0;
+    #endif
 
     //test_tensor();
     //test_reverse_int();
@@ -138,11 +171,11 @@ int main(){
     // First 50k indexes for training, next 10k indexes for validation
     shuffle_index = malloc(NUM_IMAGES*sizeof(int));
 
-    if (BINARY_NET == 0)
+    if (NET_TYPE == 0)
     {
         normal_net();
     }
-    else if (BINARY_NET == 1)
+    else if (NET_TYPE == 1)
     {
         binary_net();
     }
@@ -256,7 +289,7 @@ void normal_net()
            train_acc = (correct_preds*100.0) / NUM_TRAIN;
            val_acc = validate();
            printf("NetType=%d, Epoch=%3d, train_acc=%f val_acc=%f \n",
-                               BINARY_NET, epoch+1, train_acc, val_acc);
+                               NET_TYPE, epoch+1, train_acc, val_acc);
        #endif
 
        binarize_cycles /= N_BATCHES;
@@ -386,7 +419,7 @@ void binary_net()
            train_acc = (correct_preds*100.0) / NUM_TRAIN;
            val_acc = bin_validate();
            printf("\nNetType=%d, Epoch=%3d, train_acc=%f val_acc=%f \n",
-                               BINARY_NET, epoch+1, train_acc, val_acc);
+                               NET_TYPE, epoch+1, train_acc, val_acc);
        #endif
 
        binarize_cycles /= N_BATCHES;
@@ -521,16 +554,17 @@ void xnor_net()
            train_acc = (correct_preds*100.0) / NUM_TRAIN;
            val_acc = xnor_validate();
            printf("\nNetType=%d, Epoch=%3d, train_acc=%f val_acc=%f \n",
-                               BINARY_NET, epoch+1, train_acc, val_acc);
+                               NET_TYPE, epoch+1, train_acc, val_acc);
        #endif
 
        binarize_cycles /= N_BATCHES;
+       bin_activ_cycles/= N_BATCHES;
        conv_cycles     /= N_BATCHES;
        pool_cycles     /= N_BATCHES;
        fully_cycles    /= N_BATCHES;
        soft_cycles     /= N_BATCHES;
 
-       forward_cycles = (binarize_cycles + conv_cycles + pool_cycles + fully_cycles + soft_cycles);
+       forward_cycles = (binarize_cycles + bin_activ_cycles + conv_cycles + pool_cycles + fully_cycles + soft_cycles);
 
 
        bp_softmax_to_conv_cycles     /= N_BATCHES;
@@ -550,6 +584,7 @@ void xnor_net()
        printf("\nPER BATCH STATS\n");
        printf("EPOCH                 : %d\n\n", epoch+1);
        printf("binarize_cycles       : %.2f\n", binarize_cycles);
+       printf("bin_activ_cycles      : %.2f\n", bin_activ_cycles);
        printf("conv_cycles           : %.2f\n", conv_cycles);
        printf("pool_cycles           : %.2f\n", pool_cycles);
        printf("fully_cycles          : %.2f\n", fully_cycles);

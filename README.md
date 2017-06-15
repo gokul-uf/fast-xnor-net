@@ -15,7 +15,14 @@ cmake --build build --config Release
 
 ## How to run
 ```
-./bin/FNC_XNORNET
+To run unoptimized normal Convolutional Neural Net:
+./bin/FNC_XNORNET 0
+
+To run unoptimized binary Convolutional Neural Net:
+./bin/FNC_XNORNET 1
+
+To run unoptimized XNOR Convolutional Neural Net:
+./bin/FNC_XNORNET 2
 ```
 
 ## Project Structure
